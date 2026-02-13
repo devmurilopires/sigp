@@ -127,3 +127,32 @@ class AuthService:
             return True, "Senha atualizada com sucesso."
         except Exception as e:
             return False, f"Erro ao atualizar senha: {e}"
+        
+# --- Persistência Local (Manter Conectado) ---
+    def salvar_sessao_local(self, usuario_data):
+        dados = {
+            "usuario": usuario_data,
+            "data_login": datetime.now().strftime("%Y-%m-%d")
+        }
+        with open(self.caminho_login_salvo, "w") as f:
+            json.dump(dados, f)
+
+    def ler_sessao_local(self):
+        if os.path.exists(self.caminho_login_salvo):
+            try:
+                with open(self.caminho_login_salvo, "r") as f:
+                    dados = json.load(f)
+                
+                # Verifica se é de hoje
+                if dados.get("data_login") == datetime.now().strftime("%Y-%m-%d"):
+                    return dados.get("usuario")
+            except:
+                pass # Se der erro lendo arquivo, ignora
+            
+            # Se chegou aqui, remove o arquivo inválido/antigo
+            self.limpar_sessao_local()
+        return None
+
+    def limpar_sessao_local(self):
+        if os.path.exists(self.caminho_login_salvo):
+            os.remove(self.caminho_login_salvo)
