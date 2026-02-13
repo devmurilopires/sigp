@@ -1,7 +1,11 @@
 import bcrypt
+import smtplib
+import random
+import json
+import os
 from email.mime.text import MIMEText
 from datetime import datetime
-from config.database import get_db_connection  # Nossa nova conexão otimizada
+from config.database import get_db_connection
 
 class AuthService:
     def __init__(self):
@@ -65,3 +69,61 @@ class AuthService:
 
         except Exception as e:
             return False, f"Erro de conexão: {e}", None
+
+# --- Funcionalidades de Recuperação de Senha ---
+    def enviar_codigo_email(self, email):
+        if not email:
+            return False, "Digite o e-mail."
+
+        # Verifica se email existe
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT id FROM sigp_login WHERE email = %s", (email,))
+                    if not cursor.fetchone():
+                        return False, "E-mail não encontrado."
+        except Exception as e:
+            return False, f"Erro ao verificar email: {e}"
+
+        # Gera e envia código
+        codigo = str(random.randint(100000, 999999))
+        self.codigo_recuperacao = codigo
+        self.email_recuperacao = email
+        
+        remetente = os.getenv("EMAIL_REMETENTE")
+        senha_app = os.getenv("EMAIL_SENHA")
+        
+        if not remetente or not senha_app:
+            return False, "Configurações de e-mail não encontradas no .env"
+
+        msg = MIMEText(f"Seu código de recuperação é: {codigo}")
+        msg["Subject"] = "Recuperação de Senha - SIGP"
+        msg["From"] = remetente
+        msg["To"] = email
+
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(remetente, senha_app)
+                server.sendmail(remetente, [email], msg.as_string())
+            return True, "Código enviado com sucesso."
+        except Exception as e:
+            return False, f"Falha ao enviar e-mail: {e}"
+
+    def verificar_codigo(self, codigo_digitado):
+        if codigo_digitado == self.codigo_recuperacao:
+            return True, "Código correto."
+        return False, "Código incorreto."
+
+    def redefinir_senha(self, nova_senha):
+        if not nova_senha or len(nova_senha) < 6:
+            return False, "Senha inválida (mínimo 6 caracteres)."
+        
+        try:
+            senha_hash = bcrypt.hashpw(nova_senha.encode(), bcrypt.gensalt()).decode()
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("UPDATE sigp_login SET password_hash = %s WHERE email = %s", 
+                                   (senha_hash, self.email_recuperacao))
+            return True, "Senha atualizada com sucesso."
+        except Exception as e:
+            return False, f"Erro ao atualizar senha: {e}"
