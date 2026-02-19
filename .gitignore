@@ -1,0 +1,55 @@
+# --- SENHAS E CONFIGURAÇÕES SENSÍVEIS ---
+# Nunca suba o .env, pois ele contém a senha do seu banco de dados
+.env
+
+# --- ARQUIVOS TEMPORÁRIOS DO PYTHON ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- AMBIENTE VIRTUAL ---
+venv/
+ENV/
+
+# --- EDITORES DE CÓDIGO (VS CODE / PYCHARM) ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- ARQUIVOS DE LOG ---
+*.log
+
+# --- EXECUTÁVEIS E BUILDS ---
+# Ignora arquivos gerados pelo PyInstaller quando você criar o .exe
+dist/
+build/
+*.spec
+
+# --- DADOS E PLANILHAS ---
+# Ignora o banco de dados em Excel gerado para teste, mas mantém as pastas
+# Se quiser ignorar todas as planilhas da pasta dados:
+dados/*.xlsx
+
+# --- SISTEMA OPERACIONAL ---
+Thumbs.db
+desktop.ini
+.DS_Store
