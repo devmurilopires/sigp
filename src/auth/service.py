@@ -56,9 +56,9 @@ class AuthService:
         Autentica o utilizador através do username ou email.
         """
         if not username or not senha:
-            return False, "Por favor, preencha o utilizador e a senha.", None
+            return False, "Por favor, preencha a Matrícula e a senha.", None
 
-        # Procura pelos dados do utilizador na NOVA tabela
+        # Procura pelos dados da Matrícula na NOVA tabela
         query_busca = """
             SELECT password_hash, tipo_perfil, nome_completo, username
             FROM common.usuarios 
@@ -70,7 +70,7 @@ class AuthService:
             return False, erro, None
         
         if not resultado: 
-            return False, "Utilizador ou e-mail não encontrado.", None
+            return False, "Matrícula não encontrada.", None
 
         senha_hash_banco, tipo_perfil, nome_completo, user_real = resultado
 
@@ -100,7 +100,7 @@ class AuthService:
 
     def cadastrar_usuario(self, nome, username, email, senha, conf_senha):
         """
-        Regista um novo utilizador na tabela common.usuarios.
+        Regista um novo usuario na tabela common.usuarios.
         """
         # Validações iniciais (Fail Fast)
         if not all([nome, username, email, senha, conf_senha]):
@@ -112,14 +112,14 @@ class AuthService:
         if len(senha) < 6:
             return False, "A senha tem de ter pelo menos 6 caracteres."
 
-        # Verifica se o utilizador ou e-mail já existem na base NOVA
+        # Verifica se a Matrícula já existem na base NOVA
         query_verificacao = "SELECT id FROM common.usuarios WHERE username = %s OR email = %s"
         resultado, erro = self._executar_query(query_verificacao, (username, email), fetch_one=True)
         
         if erro: 
             return False, erro
         if resultado: 
-            return False, "O nome de utilizador ou e-mail já se encontra registado."
+            return False, "A Matrícula já se encontra registada."
 
         # Encripta a senha e insere o registo
         try:

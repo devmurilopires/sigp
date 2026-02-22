@@ -42,7 +42,7 @@ class LoginView(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         # 1. PAINEL ESQUERDO (Imagem - 60%)
-        self.left_panel = ctk.CTkFrame(self, fg_color=COLOR_PRIMARY, corner_radius=0)
+        self.left_panel = ctk.CTkFrame(self, fg_color="#c7c7c7", corner_radius=0)
         self.left_panel.grid(row=0, column=0, sticky="nsew")
         self.left_panel.grid_rowconfigure(0, weight=1) 
         self.left_panel.grid_columnconfigure(0, weight=1)
@@ -79,25 +79,32 @@ class LoginView(ctk.CTk):
         self.mostrar_login()
 
     def _construir_rodape(self):
-        """Rodapé fixo na parte inferior com elementos nas extremidades."""
-        footer_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
-        footer_frame.grid(row=1, column=0, sticky="ew", padx=40, pady=20)
+            """Rodapé fixo na parte inferior com elementos centralizados."""
+            # Removido o sticky="ew" para que o frame se ajuste ao tamanho do conteúdo e fique no centro
+            footer_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+            footer_frame.grid(row=1, column=0, pady=20)
 
-        # Copyright na ESQUERDA
-        ctk.CTkLabel(footer_frame, text="© 2026 devmurilopires", font=("Arial", 13, "bold"), text_color="#A0A0A0").pack(side="left")
-        
-        # LinkedIn na DIREITA
-        btn_linkedin = ctk.CTkButton(
-            footer_frame, 
-            text="in", 
-            font=("Arial Black", 16),
-            width=35, height=35, 
-            corner_radius=8,
-            fg_color="#0A66C2", 
-            hover_color="#004182",
-            command=lambda: webbrowser.open("https://linkedin.com/in/murilopires")
-        )
-        btn_linkedin.pack(side="right")
+            # LinkedIn na Esquerda do centro
+            btn_linkedin = ctk.CTkButton(
+                footer_frame, 
+                text="in", 
+                font=("Arial Black", 16),
+                width=35, height=35, 
+                corner_radius=8,
+                fg_color="#0A66C2", 
+                hover_color="#004182",
+                command=lambda: webbrowser.open("https://www.linkedin.com/in/murilo-pires-713275257/")
+            )
+            # pack(side="left") coloca ele e já permite o próximo item ficar do lado
+            btn_linkedin.pack(side="left", padx=(0, 8)) 
+
+            # Copyright na Direita do botão
+            ctk.CTkLabel(
+                footer_frame, 
+                text="© 2026 devmurilopires", 
+                font=("Arial", 14, "bold"), 
+                text_color="#A0A0A0"
+            ).pack(side="left")
 
     def _resetar_frame_ativo(self):
         """Cria o container centralizado perfeitamente no meio do painel direito."""
