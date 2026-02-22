@@ -5,6 +5,7 @@ from src.auth.view import LoginView
 from src.auth.service import AuthService
 from src.ordem_servico.view import renderizar as renderizar_os
 from src.parecer.view import renderizar as renderizar_parecer
+from src.relatorios.view import renderizar as renderizar_relatorios
 
 try:
     from src.shared.utils import resource_path
@@ -76,12 +77,12 @@ def iniciar_sistema(usuario_dados):
         aba = ctk.CTkFrame(frame_conteudo, fg_color="transparent")
         abas[nome] = aba
 
-    renderizar_os(abas["Ordem de Serviço"], nome_usuario)
+    renderizar_os(abas["Ordem de Serviço"], usuario_dados)
 
     criar_placeholder(abas["Gráficos"], "Dashboard e Gráficos")
-    criar_placeholder(abas["Relatórios OS"], "Relatórios de OS")
-    renderizar_parecer(abas["Parecer Técnico"], nome_usuario)
-    criar_placeholder(abas["Relatórios Parecer"], "Relatórios de Pareceres")
+    renderizar_relatorios(abas["Relatórios OS"], usuario_dados, tipo="OS")
+    renderizar_parecer(abas["Parecer Técnico"], usuario_dados)
+    renderizar_relatorios(abas["Relatórios Parecer"], usuario_dados, tipo="PARECER")
     criar_placeholder(abas["Histórico"], "Lixeira e Histórico")
     if is_admin: criar_placeholder(abas["Cadastro de Endereço"], "Cadastro de Endereços")
 
