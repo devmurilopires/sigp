@@ -50,7 +50,7 @@ class ParecerService:
         except Exception as e:
             return False, str(e)
 
-        # 3. Prepara o Arquivo Word
+        # 3. Prepara Caminhos do Arquivo Word
         modelo = resource_path(os.path.join("dados", "modelo_deferido.docx")) if tipo_parecer == "Deferido" else resource_path(os.path.join("dados", "modelo_indeferido.docx"))
         
         if not os.path.exists(modelo):
@@ -58,13 +58,33 @@ class ParecerService:
 
         pasta_base = r"C:\Users\sousa\OneDrive\Documentos\pastasTeste\OS Paradas\PARECERES TECNICOS - SIGP\2026"
         pasta_saida = os.path.join(pasta_base, tipo_parecer.upper())
-        os.makedirs(pasta_saida, exist_ok=True)
-
+        
         nome_arquivo = f"Parecer_{numero:03d}_{ano}_{tipo_parecer}.docx"
         caminho_arquivo = os.path.join(pasta_saida, nome_arquivo)
 
-        # 4. Gera o documento
+        # Prepara os dados para o banco
+        dados_banco = (
+            numero, ano, data_atual.date(), tipo_parecer.upper(), processo, 
+            assunto, ids_joined, tipo_exec, item, endereco, 
+            solicitante, motivo if tipo_parecer == "Indeferido" else None, 
+            quantidade, caminho_arquivo, usuario_logado
+        )
+
+        # =========================================================================
+        # 4. GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
+        # =========================================================================
         try:
+            # Tenta registrar no banco antes de criar qualquer arquivo físico!
+            self.repo.salvar_parecer(dados_banco)
+        except Exception as e:
+            # Se der erro aqui, a função para e o Word NÃO É CRIADO na pasta.
+            return False, f"Erro Crítico! O Parecer NÃO foi gerado pois houve falha no Banco de Dados:\n{str(e)}"
+
+        # =========================================================================
+        # 5. SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
+        # =========================================================================
+        try:
+            os.makedirs(pasta_saida, exist_ok=True)
             self._gerar_documento_word(modelo, caminho_arquivo, {
                 "{{NUM_PARECER}}": f"{numero:03d}",
                 "{{DATA}}": data_str,
@@ -78,26 +98,16 @@ class ParecerService:
                 "{{MOTIVO}}": motivo,
                 "{{QUANTIDADE}}": quantidade
             })
+            
+            return True, f"Parecer {numero:03d}/{ano} criado e registrado com sucesso!\nSalvo em: {nome_arquivo}"
+            
         except Exception as e:
-            return False, f"Erro ao manipular o Word: {e}"
+            # Em casos raros de falha no disco (ex: sem permissão ou disco cheio), avisa o usuário.
+            return False, f"Atenção: O Parecer foi registrado no banco, mas houve falha ao gerar o documento Word:\n{e}"
 
-        # 5. Salva no Banco de Dados
-        dados_banco = (
-            numero, ano, data_atual.date(), tipo_parecer.upper(), processo, 
-            assunto, ids_joined, tipo_exec, item, endereco, 
-            solicitante, motivo if tipo_parecer == "Indeferido" else None, 
-            quantidade, caminho_arquivo, usuario_logado
-        )
-
-        try:
-            self.repo.salvar_parecer(dados_banco)
-            return True, f"Parecer {numero:03d}/{ano} gerado e salvo com sucesso!"
-        except Exception as e:
-            # ROLLBACK: Se deu erro no banco, apaga o arquivo físico!
-            if os.path.exists(caminho_arquivo):
-                os.remove(caminho_arquivo)
-            return False, f"Ocorreu um erro no Banco de Dados.\nO arquivo Word foi cancelado.\nErro: {e}"
-
+    # =========================================================
+    # MANIPULAÇÃO DO WORD (DOCX)
+    # =========================================================
     def _gerar_documento_word(self, modelo_path, destino_path, tags):
         doc = Document(modelo_path)
         
