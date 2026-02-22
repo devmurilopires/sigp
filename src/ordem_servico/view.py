@@ -4,11 +4,9 @@ from src.ordem_servico.service import OSService
 
 class OSView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
-        # Inicializa o Frame (herdando o fundo branco padrão das abas)
         super().__init__(master, fg_color="transparent")
         self.pack(fill="both", expand=True)
 
-        # Injeta o Service e Dados do Usuário
         self.service = OSService()
         self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
         self.descricoes_acumuladas = []
@@ -19,11 +17,10 @@ class OSView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_interface(self):
-        # Container Scrollável
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#FFFFFF")
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-        # --- CABEÇALHO (Seletor de Modelo) ---
+        # --- CABEÇALHO ---
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
 
@@ -40,39 +37,41 @@ class OSView(ctk.CTkFrame):
         form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         form_frame.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1: ID, Tipo OS, Tipo Item
+        # Linha 1: Ação da OS e Tipo de Item (No topo, lado a lado)
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row1.pack(fill="x", pady=10, padx=15)
+        row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.id_entry = self._criar_campo(row1, "ID do Ponto", width=200, side="left")
+        self.tipo_os_var = self._criar_combobox(row1, "Ação da OS", width=250, values=["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], side="left")
+        self.tipo_os_var.set("Implantação")
+
+        self.tipo_item_var = self._criar_combobox(row1, "Tipo de Item", width=250, values=self.itens_urbmidia, side="left")
+        self.tipo_item_var.set(self.itens_urbmidia[0])
+
+        # Linha 2: ID do Ponto (Sozinho na linha, abaixo das opções)
+        row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=5, padx=15)
+
+        self.id_entry = self._criar_campo(row2, "ID do Ponto", width=250, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
-        self.tipo_os_var = ctk.CTkComboBox(row1, values=["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], state="readonly", width=250)
-        self.tipo_os_var.set("Implantação")
-        self._empacotar_campo(row1, "Ação da OS", self.tipo_os_var, side="left")
-
-        self.tipo_item_var = ctk.CTkComboBox(row1, values=self.itens_urbmidia, state="readonly", width=250)
-        self.tipo_item_var.set(self.itens_urbmidia[0])
-        self._empacotar_campo(row1, "Tipo de Item", self.tipo_item_var, side="left")
-
-        # Linha 2: Endereço, Número
-        row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row2.pack(fill="x", pady=10, padx=15)
-        
-        self.endereco_entry = self._criar_campo(row2, "Logradouro (Endereço)", width=550, side="left")
-        self.numero_entry = self._criar_campo(row2, "Número", width=150, side="left")
-
-        # Linha 3: Bairro, Complemento
+        # Linha 3: Endereço, Número
         row3 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row3.pack(fill="x", pady=10, padx=15)
+        row3.pack(fill="x", pady=5, padx=15)
+        
+        self.endereco_entry = self._criar_campo(row3, "Logradouro (Endereço)", width=550, side="left")
+        self.numero_entry = self._criar_campo(row3, "Número", width=150, side="left")
 
-        self.bairro_entry = self._criar_campo(row3, "Bairro", width=350, side="left")
-        self.complemento_entry = self._criar_campo(row3, "Complemento", width=350, side="left")
+        # Linha 4: Bairro, Complemento
+        row4 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        row4.pack(fill="x", pady=(5, 15), padx=15)
+
+        self.bairro_entry = self._criar_campo(row4, "Bairro", width=350, side="left")
+        self.complemento_entry = self._criar_campo(row4, "Complemento", width=350, side="left")
 
         # Botão Adicionar
-        ctk.CTkButton(form_frame, text="➕ Adicionar à Lista", fg_color="#0F8C75", font=("Arial Bold", 14), height=40, command=self.adicionar_descricao).pack(pady=20)
+        ctk.CTkButton(form_frame, text="➕ Adicionar à Lista", fg_color="#0F8C75", font=("Arial Bold", 14), height=40, command=self.adicionar_descricao).pack(pady=(10, 20))
 
-        # --- TABELA DE ACUMULADOS ---
+        # --- TABELA ---
         tabela_container = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         tabela_container.pack(fill="x", pady=10, padx=10)
         
@@ -81,16 +80,16 @@ class OSView(ctk.CTkFrame):
         self.tabela_frame = ctk.CTkFrame(tabela_container, fg_color="transparent")
         self.tabela_frame.pack(fill="both", expand=True, padx=15, pady=10)
 
-        # --- RODAPÉ (Gerar OS) ---
+        # --- RODAPÉ ---
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=20)
 
         self.criado_por_label = ctk.CTkLabel(footer_frame, text=f"Responsável: {self.usuario_logado}", font=("Arial", 12), text_color="gray")
         self.criado_por_label.pack(side="left", padx=10)
 
-        ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#14A1D9", font=("Arial Bold", 16), height=50, width=300, command=self.acao_criar_os).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self.acao_criar_os).pack(side="right", padx=10)
 
-    # --- Utilitários de UI ---
+    # --- UTILITÁRIOS VISUAIS ---
     def _criar_campo(self, parent, label_text, width, side="top"):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
@@ -99,11 +98,13 @@ class OSView(ctk.CTkFrame):
         entry.pack(anchor="w", pady=(2,0))
         return entry
         
-    def _empacotar_campo(self, parent, label_text, widget, side="top"):
+    def _criar_combobox(self, parent, label_text, width, values, side="top"):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        widget.pack(anchor="w", pady=(2,0))
+        combo = ctk.CTkComboBox(container, width=width, height=35, values=values, state="readonly")
+        combo.pack(anchor="w", pady=(2,0))
+        return combo
 
     def _atualizar_opcoes_item(self, *args):
         if self.pasta_escolhida_var.get() == "URBMIDIA":
@@ -113,7 +114,7 @@ class OSView(ctk.CTkFrame):
             self.tipo_item_var.configure(values=self.itens_proximaparada)
             self.tipo_item_var.set(self.itens_proximaparada[0])
 
-    # --- Ações de UI ---
+    # --- AÇÕES ---
     def ao_sair_do_id(self, event=None):
         id_digitado = self.id_entry.get().strip().upper()
         if not id_digitado: return
@@ -182,7 +183,6 @@ class OSView(ctk.CTkFrame):
             messagebox.showerror("Erro", "Formulário vazio.")
             return
 
-        # 1. Alerta de Histórico (Regra de Negócio que envolve UI)
         if id_digitado:
              resposta = messagebox.askyesno("Verificação de ID", f"Você já consultou o histórico do ID {id_digitado}?\nSe não, clique em NÃO para ver agora.")
              if not resposta:
@@ -190,7 +190,6 @@ class OSView(ctk.CTkFrame):
                  messagebox.showinfo(f"Histórico ID {id_digitado}", historico)
                  return
 
-        # 2. Coleta de dados
         form_dados = {
             'endereco': self.endereco_entry.get().upper(),
             'numero': self.numero_entry.get().upper(),
@@ -200,7 +199,6 @@ class OSView(ctk.CTkFrame):
         
         modelo = "dados/modelo_etufor_urbmidia.docx" if self.pasta_escolhida_var.get() == "URBMIDIA" else "dados/modelo_etufor_prxparada.docx"
 
-        # 3. Chama o Service
         sucesso, mensagem = self.service.processar_criacao_os(
             descricoes_acumuladas=self.descricoes_acumuladas,
             pasta_escolhida=self.pasta_escolhida_var.get(),
@@ -211,10 +209,8 @@ class OSView(ctk.CTkFrame):
             usuario_logado=self.usuario_logado
         )
 
-        # 4. Trata o Resultado
         if sucesso:
             messagebox.showinfo("OS Gerada com Sucesso!", mensagem)
-            # Limpeza geral
             self.id_entry.delete(0, ctk.END)
             self.endereco_entry.delete(0, ctk.END)
             self.numero_entry.delete(0, ctk.END)
@@ -225,6 +221,5 @@ class OSView(ctk.CTkFrame):
         else:
             messagebox.showerror("Erro ao Gerar OS", mensagem)
 
-# Ponto de entrada para o main.py
 def renderizar(frame_destino, usuario_logado):
     return OSView(master=frame_destino, usuario_logado=usuario_logado)
