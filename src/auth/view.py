@@ -42,7 +42,7 @@ class LoginView(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         # 1. PAINEL ESQUERDO (Imagem - 60%)
-        self.left_panel = ctk.CTkFrame(self, fg_color="#c7c7c7", corner_radius=0)
+        self.left_panel = ctk.CTkFrame(self, fg_color="#F2F2F2", corner_radius=0)
         self.left_panel.grid(row=0, column=0, sticky="nsew")
         self.left_panel.grid_rowconfigure(0, weight=1) 
         self.left_panel.grid_columnconfigure(0, weight=1)

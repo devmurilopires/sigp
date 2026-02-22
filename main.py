@@ -6,7 +6,7 @@ from src.auth.service import AuthService
 from src.ordem_servico.view import renderizar as renderizar_os
 
 try:
-    from utils import resource_path
+    from src.shared.utils import resource_path
 except ImportError:
     def resource_path(path): return path
 
