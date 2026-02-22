@@ -13,16 +13,61 @@ class ParecerView(ctk.CTkFrame):
 
         # Listas Padrões
         self._assuntos_padrao = [
-            "Solicitação de Implantação de Abrigo Metálico", "Solicitação de Implantação de Placa/Barrote",
-            "Solicitação de Implantação de Placa/Poste", "Solicitação de Implantação de Parada Segura",
-            "Solicitação de Transferência de Abrigo Metálico", "Solicitação de Transferência de Placa/Barrote",
-            "Solicitação de Remoção de Abrigo Metálico", "Solicitação de Manutenção de Abrigo Metálico", "Outros"
+            "Solicitação de Implantação de Abrigo Metálico",
+            "Solicitação de Implantação de Placa/Barrote",
+            "Solicitação de Implantação de Placa/Poste",
+            "Solicitação de Implantação de Parada Segura",
+            "Solicitação de Implantação de Abrigo Concreto",
+            "Solicitação de Transferência de Abrigo Metálico",
+            "Solicitação de Transferência de Placa/Barrote",
+            "Solicitação de Transferência de Placa/Poste",
+            "Solicitação de Transferência de Parada Segura",
+            "Solicitação de Transferência de Abrigo Concreto",
+            "Solicitação de Remoção de Abrigo Metálico",
+            "Solicitação de Remoção de Placa/Barrote",
+            "Solicitação de Remoção de Placa/Poste",
+            "Solicitação de Remoção de Parada Segura",
+            "Solicitação de Remoção de Abrigo Concreto",
+            "Solicitação de Substituição de Abrigo Metálico",
+            "Solicitação de Substituição de Placa/Barrote",
+            "Solicitação de Substituição de Placa/Poste",
+            "Solicitação de Substituição de Parada Segura",
+            "Solicitação de Substituição de Abrigo Concreto",
+            "Solicitação de Manutenção de Abrigo Metálico",
+            "Solicitação de Manutenção de Placa/Barrote",
+            "Solicitação de Manutenção de Placa/Poste",
+            "Solicitação de Manutenção de Parada Segura",
+            "Solicitação de Manutenção de Abrigo Concreto",
+            "Outros"
         ]
-        
+
+
         self._solicitantes_padrao = [
-            "Cidadão", "Comunidade", "AMC", "Ouvidoria Etufor", "Sindiônibus", 
-            "SER 1 - Secretaria Regional 1", "SER 2 - Secretaria Regional 2", "Outros"
-        ]
+        "AGEFIS - Agência de Fiscalização de Fortaleza", "ALECE - Assembléia Legislativa do Ceará", "AMC - Autarquia Municipal de Trânsito e Cidadania",
+        "Assessoria Esportiva", "Ceará Sporting Club", "CGM - Controladoria e Ouvidoria Geral do Município",
+        "Cidadão", "CITINOVA - fundação da Ciência, Tecnologia e Inovação de Fortaleza", "CMF - Câmara Municipal de Fortaleza",
+        "Comunidade", "Construtoras", "Cootraps",
+        "Empreendimento Comercial", "Empreendimento Residencial", "Empresas Operadoras",
+        "Fortaleza Esporte Clube", "FUNCI - Fundação da Criança e da Família Cidadã", "GMF - Guarda Municipal de Fortaleza",
+        "HABITAFOR - Secretaria Municipal de Desenvolvimento Habitacional de Fortaleza", "IMPARH - Instituto Municipal de Desenvolvimento de Recursos Humanos", "Imprensa",
+        "Instituição de Ensino", "Instituição Religiosa", "Instituições Particulares",
+        "IPEM - Instituro de Pesos e Medidas", "IPLANFOR - Instituto de Planejamento de Fortaleza", "IPM - Instituto de Previdência do Município",
+        "Ministério Público", "Ouvidoria Etufor", "Ouvidoria Geral do Município de Fortaleza",
+        "PGM - Procuradoria Geral do Município", "Polícia Militar do Ceará", "PROCON - Departamento Municipal de Proteção e Defesa dos Direitos do Consumidor",
+        "SCDH - Secretaria Municipal de Cidadania e Direitos Humanos", "SCSP - Secretaria Municipal de Conservação e Serviços Públicos", "SDE - Secretaria Municipal de Desenvolvimento Econômico",
+        "SECEL - Secretaria Municipal de Esporte e Lazer", "SECULTFOR - Secretaria Municipal de Cultura de Fortaleza", "SEFIN - Secretaria de Finanças",
+        "SEGER - Secretaria Municipal de Gestão Regional", "SEINF - Secretaria Municipal de Infraestrutura", "SEJUV - Secretaria Municipal da Juventude",
+        "SEPOG - Secretaria de Planejamento, Orçamento e Gestão", "SEPOG - Secretaria Municipal de Governo", "SER 1 - Secretaria Regional 1",
+        "SER 2 - Secretaria Regional 2", "SER 3 - Secretaria Regional 3", "SER 4 - Secretaria Regional 4",
+        "SER 5 - Secretaria Regional 5", "SER 6 - Secretaria Regional 6", "SER 7 - Secretaria Regional 7",
+        "SER 8 - Secretaria Regional 8", "SER 9 - Secretaria Regional 9", "SER 10 - Secretaria Regional 10",
+        "SER 11 - Secretaria Regional 11", "SER 12 - Secretaria Regional 12", "SERCE - Secretaria Regional Centro",
+        "SESEC - Secretaria Municipal de Segurança Cidadã", "SETFOR - Secretaria Municipal de Turismo de Fortaleza", "SETRA - Secretaria Municipal de Trabalho, Desenvolvimento Social e Combate a fome",
+        "SEUMA - Secretaria Municipal de Urbanismo e Meio Ambiente", "Sindiônibus", "SME - Secretaria Municipal de Educação",
+        "SMS - Secretaria Municipal de Saúde", "TRANSITAR", "TRE - Tribunal Regional Eleitoral",
+        "TRE - Tribunal Regional Eleitoral do Ceará", "URBFOR - Autarquia de Urbanismo e Paisagismo de Fortaleza",
+        "DIARH", "DIASIS", "DICUSTO", "DIFIS", "DIMON", "DIOPE", "DIPRE", "DITEC", "DITRAN", "Ouvidoria", "Protocolo", "Vice Presidência", "Outros"
+    ]
         
         self._tipos_padrao = ["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"]
         self._itens_padrao = ["Abrigo Metálico", "Placa/Barrote", "Placa/Poste","Parada Segura", "Abrigo Concreto"]
