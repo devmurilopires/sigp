@@ -75,3 +75,57 @@ class OSRepository:
             print(f"[LOG DB] Erro ao atualizar endereço: {e}")
             raise Exception("Falha ao atualizar o endereço no banco.")
 
+    # --- MÉTODOS DE ORDEM DE SERVIÇO (SCHEMA SIGP) ---
+    def buscar_historico_os(self, id_procurado, limite=5):
+        query = """
+            SELECT numero_os, data, tipo_os, tipo_item, endereco, bairro, criado_por
+            FROM sigp.ordens_servico
+            WHERE id_texto = %s
+            ORDER BY data DESC
+            LIMIT %s
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, (id_procurado, limite))
+                    return cursor.fetchall()
+        except Exception as e:
+            print(f"[LOG DB] Erro ao buscar histórico: {e}")
+            return []
+
+    def obter_proximo_numero_os(self, pasta_final, ano_atual):
+        query = """
+            SELECT MAX(numero_os)
+            FROM sigp.ordens_servico
+            WHERE pasta_final = %s AND RIGHT(data, 4) = %s
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, (pasta_final, ano_atual))
+                    resultado = cursor.fetchone()
+                    if resultado and resultado[0] is not None:
+                        return resultado[0] + 1
+                    return 1
+        except Exception as e:
+            print(f"[LOG DB] Erro ao gerar numeração da OS: {e}")
+            return 1 # Fallback seguro
+
+    def salvar_os(self, dados_os):
+        query = """
+            INSERT INTO sigp.ordens_servico (
+                numero_os, data, id_texto, ids_texto,
+                tipo_os, tipo_os_normalizado,
+                tipo_item, tipo_item_normalizado,
+                endereco, bairro, bairro_normalizado,
+                complemento, descricao, criado_por, pasta_final
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, dados_os)
+            return True
+        except Exception as e:
+            print(f"[LOG DB] Erro ao salvar OS final: {e}")
+            raise Exception("Falha ao registrar a Ordem de Serviço no banco de dados.")
