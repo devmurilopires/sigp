@@ -46,7 +46,7 @@ class OSService:
         return texto
 
     # =========================================================
-    # ORQUESTRAÇÃO PRINCIPAL (GERAR O.S E SALVAR)
+    # ORQUESTRAÇÃO PRINCIPAL (GERAÇÃO SEGURA - DB PRIMEIRO)
     # =========================================================
     def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado):
         """Método principal que coordena a geração do arquivo e os salvamentos no banco."""
@@ -73,27 +73,24 @@ class OSService:
             dados_id = self.repo.buscar_endereco_por_id(id_atual)
             try:
                 if not dados_id:
-                    # ID não existia, cria um novo
                     self.repo.cadastrar_endereco(
                         id_atual, form_dados['endereco'], form_dados['numero'], 
                         form_dados['bairro'], form_dados['complemento'], usuario_logado
                     )
                 else:
-                    # ID já existia, atualiza os dados. Se estava INATIVO, reativa.
                     reativar = dados_id["status"].strip().upper() == "INATIVO"
                     self.repo.atualizar_endereco(
                         id_atual, form_dados['endereco'], form_dados['numero'], 
                         form_dados['bairro'], form_dados['complemento'], usuario_logado, reativar=reativar
                     )
             except Exception as e:
-                return False, str(e)
+                return False, f"Erro ao gerenciar endereços no banco:\n{str(e)}"
 
-        # 4. Preparação dos dados para o Documento e Banco de Dados
+        # 4. Preparação dos dados
         ano_atual = datetime.now().strftime('%Y')
         numero_os = self.repo.obter_proximo_numero_os(pasta_escolhida, ano_atual)
         data_str = datetime.now().strftime("%d/%m/%Y")
 
-        # Tratamento da String de Endereço baseada na primeira descrição
         endereco_completo = descricoes_acumuladas[0]["descricao"].split(" NA ")[-1].split(",")[0].strip()
         bairro_str = form_dados['bairro']
         complemento_str = form_dados['complemento']
@@ -106,37 +103,52 @@ class OSService:
                 bairro_str = partes[0].strip()
                 complemento_str = partes[1].strip()
         except:
-            pass # Se der erro no split, mantém os dados originais do form_dados
+            pass 
 
-        # 5. Criação das Pastas e Geração do Arquivo Word (.docx)
-        nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
-        caminho_pasta = os.path.join(pasta_base, nome_pasta)
-        os.makedirs(caminho_pasta, exist_ok=True)
+        # GARANTIA DE MAIÚSCULAS ANTES DE SALVAR (Regra Nova)
+        tipo_os_up = str(tipo_os).strip().upper() if tipo_os else ""
+        tipo_item_up = str(tipo_item).strip().upper() if tipo_item else ""
 
-        nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
-        destino_docx = os.path.join(caminho_pasta, nome_arquivo)
-
-        try:
-            caminho_modelo = resource_path(modelo_escolhido)
-            self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas)
-        except Exception as e:
-            return False, f"Erro ao gerar o arquivo Word da OS:\n{e}"
-
-        # 6. Salvar Registro da OS no Banco de Dados
+        # Monta os dados para o Banco
         dados_salvar_os = (
             numero_os, data_str, id_principal, ids_formatado,
-            tipo_os, self.normalizar(tipo_os),
-            tipo_item, self.normalizar(tipo_item),
+            tipo_os_up, self.normalizar(tipo_os_up),
+            tipo_item_up, self.normalizar(tipo_item_up),
             endereco_completo, bairro_str, self.normalizar(bairro_str),
             complemento_str, "\n".join([item["descricao"] for item in descricoes_acumuladas]),
             usuario_logado, pasta_escolhida
         )
 
+        # =========================================================================
+        # 5. GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
+        # =========================================================================
         try:
+            # Tenta registrar no banco antes de fazer qualquer coisa nos arquivos!
             self.repo.salvar_os(dados_salvar_os)
-            return True, f"Ordem de Serviço criada e registrada com sucesso!\nSalva em: {nome_arquivo}"
         except Exception as e:
-            return False, str(e)
+            # Se der erro aqui, a função para e o Word/Pasta NÃO SÃO CRIADOS.
+            return False, f"Erro Crítico! A OS NÃO foi gerada pois houve falha no Banco de Dados:\n{str(e)}"
+
+
+        # =========================================================================
+        # 6. SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
+        # =========================================================================
+        nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
+        caminho_pasta = os.path.join(pasta_base, nome_pasta)
+        nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
+        destino_docx = os.path.join(caminho_pasta, nome_arquivo)
+
+        try:
+            os.makedirs(caminho_pasta, exist_ok=True)
+            caminho_modelo = resource_path(modelo_escolhido)
+            self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas)
+            
+            return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registrada com sucesso!\nSalva em: {nome_arquivo}"
+            
+        except Exception as e:
+            # Em raros casos onde o banco salvou, mas a pasta falhou (ex: cabo de rede soltou)
+            # Retornamos o aviso para o usuário saber que o sistema tem o registro, mas o arquivo falhou.
+            return False, f"Atenção: A OS foi registrada no banco, mas houve falha ao gerar o documento Word na rede:\n{e}"
 
     # =========================================================
     # MANIPULAÇÃO DO WORD (DOCX)
