@@ -318,13 +318,34 @@ class RelatorioView(ctk.CTkFrame):
             ctk.CTkButton(popup, text="Fechar", fg_color="gray", font=("Arial Bold", 15), height=45, command=popup.destroy).pack(fill="x", padx=40, pady=20)
 
     def _acao_excluir(self, id_registro):
-        if messagebox.askyesno("Atenção Crítica", f"Deseja EXCLUIR o {self.tipo_relatorio} Nº {id_registro} do banco de dados?"):
-            sucesso, msg = self.service.excluir_registro(self.tipo_relatorio, id_registro)
+        # Abre o Popup de Justificativa
+        popup = ctk.CTkToplevel(self)
+        popup.title(f"Atenção: Excluir {self.tipo_relatorio} Nº {id_registro}")
+        popup.geometry("500x350")
+        popup.grab_set()
+
+        ctk.CTkLabel(popup, text="EXCLUSÃO PERMANENTE", font=("Arial Black", 18), text_color="#D32F2F").pack(pady=(20, 5))
+        ctk.CTkLabel(popup, text="Esta ação apagará o arquivo físico e o registro.\nEles ficarão visíveis apenas no Histórico.", font=("Arial", 12)).pack(pady=(0, 15))
+
+        ctk.CTkLabel(popup, text="Motivo / Justificativa da exclusão:", font=("Arial Bold", 13)).pack(anchor="w", padx=30)
+        txt_motivo = ctk.CTkTextbox(popup, height=80, font=("Arial", 12))
+        txt_motivo.pack(fill="x", padx=30, pady=5)
+
+        def confirmar():
+            motivo = txt_motivo.get("1.0", "end").strip()
+            if len(motivo) < 5:
+                messagebox.showwarning("Aviso", "Por favor, digite uma justificativa válida.")
+                return
+            
+            sucesso, msg = self.service.excluir_registro(self.tipo_relatorio, id_registro, motivo, self.usuario_logado)
             if sucesso:
                 messagebox.showinfo("Excluído", msg)
+                popup.destroy()
                 self.acao_buscar()
             else:
                 messagebox.showerror("Erro", msg)
+
+        ctk.CTkButton(popup, text="Confirmar Exclusão e Gravar Log", fg_color="#D32F2F", hover_color="#B71C1C", font=("Arial Bold", 14), height=45, command=confirmar).pack(fill="x", padx=30, pady=20)
 
 def renderizar(frame_destino, usuario_logado, tipo):
     return RelatorioView(master=frame_destino, usuario_logado=usuario_logado, tipo_relatorio=tipo)
