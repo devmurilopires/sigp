@@ -6,6 +6,7 @@ from src.auth.service import AuthService
 from src.ordem_servico.view import renderizar as renderizar_os
 from src.parecer.view import renderizar as renderizar_parecer
 from src.relatorios.view import renderizar as renderizar_relatorios
+from src.historico.view import renderizar as renderizar_historico
 
 try:
     from src.shared.utils import resource_path
@@ -83,7 +84,7 @@ def iniciar_sistema(usuario_dados):
     renderizar_relatorios(abas["Relatórios OS"], usuario_dados, tipo="OS")
     renderizar_parecer(abas["Parecer Técnico"], usuario_dados)
     renderizar_relatorios(abas["Relatórios Parecer"], usuario_dados, tipo="PARECER")
-    criar_placeholder(abas["Histórico"], "Lixeira e Histórico")
+    renderizar_historico(abas["Histórico"], usuario_dados)
     if is_admin: criar_placeholder(abas["Cadastro de Endereço"], "Cadastro de Endereços")
 
     def selecionar_aba(nome_aba):
