@@ -82,9 +82,16 @@ class RelatorioService:
     # =======================================================
     # EXCLUSÃO SEGURA (PRIMEIRO O BANCO, DEPOIS O ARQUIVO)
     # =======================================================
-    def excluir_registro(self, tipo_relatorio, numero):
+
+    def excluir_registro(self, tipo_relatorio, numero, motivo, usuario_logado):
+        import json # Certifique-se de importar json no topo do arquivo!
+        
         if tipo_relatorio == "OS":
-            # 1. Apenas GUARDA o caminho (não apaga ainda)
+            # 1. Coleta TUDO para o Log
+            dados_completos = self.repo.buscar_detalhes_os(numero)
+            if not dados_completos: return False, "Não foi possível resgatar os dados para o Log."
+            
+            # Pega o caminho
             pasta_para_deletar = None
             dados_os = self.repo.obter_dados_para_caminho_os(numero)
             if dados_os:
@@ -92,36 +99,28 @@ class RelatorioService:
                 todos_ids = [id_princ] if id_princ else []
                 if ids_adicionais and ids_adicionais != 'None':
                     todos_ids.extend([i.strip() for i in ids_adicionais.split('-') if i.strip() != id_princ])
-                
                 caminho_arquivo = self._reconstruir_caminho_os(pasta, numero, dt_criacao, todos_ids)
-                if caminho_arquivo:
-                    pasta_para_deletar = os.path.dirname(caminho_arquivo)
+                if caminho_arquivo: pasta_para_deletar = os.path.dirname(caminho_arquivo)
             
-            # 2. TENTA EXCLUIR DO BANCO PRIMEIRO!
-            sucesso, msg = self.repo.excluir_os(numero)
+            # 2. Transação de Banco (Loga e Deleta)
+            sucesso, msg = self.repo.excluir_e_logar_os(numero, dados_completos, caminho_arquivo, motivo, usuario_logado)
             
-            # 3. SE O BANCO APAGOU COM SUCESSO, AÍ SIM APAGAMOS A PASTA
+            # 3. Destruição Física Permanente
             if sucesso and pasta_para_deletar and os.path.exists(pasta_para_deletar):
-                try: 
-                    shutil.rmtree(pasta_para_deletar)
-                except Exception as e:
-                    # Se o Word estiver aberto em outro PC, ele avisa, mas o banco já foi apagado!
-                    return True, f"OS excluída do banco!\nPorém a pasta física não pôde ser apagada (feche arquivos abertos):\n{e}"
-            
+                try: shutil.rmtree(pasta_para_deletar)
+                except: pass
             return sucesso, msg
             
         else: 
-            # 1. Apenas GUARDA o caminho do arquivo do Parecer
+            # 1. Coleta TUDO para o Log
+            dados_completos = self.repo.buscar_detalhes_parecer(numero)
             caminho_arquivo = self.repo.obter_caminho_parecer(numero)
             
-            # 2. TENTA EXCLUIR DO BANCO PRIMEIRO!
-            sucesso, msg = self.repo.excluir_parecer(numero)
+            # 2. Transação de Banco (Loga e Deleta)
+            sucesso, msg = self.repo.excluir_e_logar_parecer(numero, dados_completos, caminho_arquivo, motivo, usuario_logado)
             
-            # 3. SE O BANCO APAGOU COM SUCESSO, AÍ SIM APAGAMOS O ARQUIVO
+            # 3. Destruição Física Permanente
             if sucesso and caminho_arquivo and os.path.exists(caminho_arquivo):
-                try: 
-                    os.remove(caminho_arquivo)
-                except Exception as e:
-                    return True, f"Parecer excluído do banco!\nPorém o Word não pôde ser apagado (feche o arquivo se estiver aberto):\n{e}"
-                    
+                try: os.remove(caminho_arquivo)
+                except: pass
             return sucesso, msg
