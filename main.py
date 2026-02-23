@@ -7,6 +7,7 @@ from src.ordem_servico.view import renderizar as renderizar_os
 from src.parecer.view import renderizar as renderizar_parecer
 from src.relatorios.view import renderizar as renderizar_relatorios
 from src.historico.view import renderizar as renderizar_historico
+from src.dashboard.view import renderizar as renderizar_dashboard
 
 try:
     from src.shared.utils import resource_path
@@ -80,7 +81,7 @@ def iniciar_sistema(usuario_dados):
 
     renderizar_os(abas["Ordem de Serviço"], usuario_dados)
 
-    criar_placeholder(abas["Gráficos"], "Dashboard e Gráficos")
+    renderizar_dashboard(abas["Gráficos"], usuario_dados)
     renderizar_relatorios(abas["Relatórios OS"], usuario_dados, tipo="OS")
     renderizar_parecer(abas["Parecer Técnico"], usuario_dados)
     renderizar_relatorios(abas["Relatórios Parecer"], usuario_dados, tipo="PARECER")
