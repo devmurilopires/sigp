@@ -222,34 +222,46 @@ class RelatorioRepository:
                     return res[0] if res else None
         except: return None
 
-    def excluir_os(self, numero):
+    # =========================================================
+    # EXCLUSÃO SEGURA COM LOG DE AUDITORIA (LIXEIRA)
+    # =========================================================
+    def excluir_e_logar_os(self, numero, dados_json, caminho_original, motivo, excluido_por):
+        """Salva o snapshot na lixeira e deleta a OS na mesma transação."""
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    # 1. Salva na Lixeira
+                    cur.execute("""
+                        INSERT INTO common.lixeira (modulo, numero, dados, caminho_original, motivo, excluido_por)
+                        VALUES ('OS', %s, %s, %s, %s, %s)
+                    """, (numero, json.dumps(dados_json, ensure_ascii=False), caminho_original, motivo, excluido_por))
+                    
+                    # 2. Deleta a OS
                     cur.execute("DELETE FROM sigp.ordens_servico WHERE numero = %s", (numero,))
-            return True, "OS Excluída permanentemente!"
+            return True, "OS excluída e registrada no Histórico com sucesso!"
         except Exception as e:
-            return False, str(e)
-            
-    def excluir_parecer(self, numero):
+            return False, f"Erro no banco ao excluir: {e}"
+
+    def excluir_e_logar_parecer(self, numero, dados_json, caminho_original, motivo, excluido_por):
+        """Salva o snapshot na lixeira e deleta o Parecer na mesma transação."""
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # 1. Descobre o ID exato e único deste parecer no SIGP
                     cur.execute("SELECT id FROM common.pareceres_base WHERE numero_parecer_ano = %s AND sistema_origem = 'SIGP' LIMIT 1", (numero,))
                     linha = cur.fetchone()
-                    
-                    if not linha:
-                        return False, "Parecer não encontrado no banco de dados."
-                    
+                    if not linha: return False, "Parecer não encontrado."
                     id_parecer = linha[0]
 
-                    # 2. Apaga PRIMEIRO a Tabela Filha (Obrigatório para não dar erro de Chave Estrangeira)
+                    # 1. Salva na Lixeira
+                    cur.execute("""
+                        INSERT INTO common.lixeira (modulo, numero, dados, caminho_original, motivo, excluido_por)
+                        VALUES ('PARECER', %s, %s, %s, %s, %s)
+                    """, (numero, json.dumps(dados_json, ensure_ascii=False), caminho_original, motivo, excluido_por))
+
+                    # 2. Deleta o Parecer (Filha depois Mãe)
                     cur.execute("DELETE FROM sigp.pareceres WHERE id = %s", (id_parecer,))
-                    
-                    # 3. Apaga DEPOIS a Tabela Mãe
                     cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (id_parecer,))
                     
-            return True, "Parecer e Arquivo excluídos permanentemente!"
+            return True, "Parecer excluído e registrado no Histórico com sucesso!"
         except Exception as e:
-            return False, f"Erro no Banco de Dados: {str(e)}"
+            return False, f"Erro no banco ao excluir: {e}"
