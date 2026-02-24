@@ -174,9 +174,9 @@ class RelatorioView(ctk.CTkFrame):
             linha_frame = ctk.CTkFrame(self.scroll_tabela, fg_color=bg_color, corner_radius=6)
             linha_frame.pack(fill="x", pady=2, padx=2)
 
-            id_registro = linha[0]
+            id_banco_invisivel = linha[0] # <--- ESSE É O SEGREDO! O banco salva pela Chave Primária
             caminho_arquivo = linha[-1] 
-            valores_exibicao = linha[:-1]
+            valores_exibicao = linha[1:-1] # <--- Desenha na tela pulando o ID invisível (do 1 até o penúltimo)
 
             for j, val in enumerate(valores_exibicao):
                 texto = str(val) if val is not None else "-"
@@ -205,7 +205,7 @@ class RelatorioView(ctk.CTkFrame):
             frame_botoes = ctk.CTkFrame(linha_frame, fg_color="transparent")
             frame_botoes.pack(side="right", padx=5)
 
-            ctk.CTkButton(frame_botoes, text="🔍", fg_color="#14A1D9", hover_color="#0F7FA8", width=35, height=28, command=lambda id_reg=id_registro: self._acao_detalhes(id_reg)).pack(side="left", padx=2)
+            ctk.CTkButton(frame_botoes, text="🔍", fg_color="#14A1D9", hover_color="#0F7FA8", width=35, height=28, command=lambda id_reg=id_banco_invisivel: self._acao_detalhes(id_reg)).pack(side="left", padx=2)
 
             if caminho_arquivo and caminho_arquivo != "-":
                 ctk.CTkButton(frame_botoes, text="📄 Word", fg_color="#0F8C75", hover_color="#0B6B59", width=65, height=28, font=("Arial Bold", 11), command=lambda p=caminho_arquivo: self._abrir_word(p)).pack(side="left", padx=2)
@@ -214,8 +214,8 @@ class RelatorioView(ctk.CTkFrame):
 
             # Só mostra o botão Excluir se for Admin
             if self.is_admin:
-                ctk.CTkButton(frame_botoes, text="🗑️", fg_color="#D32F2F", hover_color="#B71C1C", width=35, height=28, command=lambda id_reg=id_registro: self._acao_excluir(id_reg)).pack(side="left", padx=2)
-
+                ctk.CTkButton(frame_botoes, text="🗑️", fg_color="#D32F2F", hover_color="#B71C1C", width=35, height=28, command=lambda id_reg=id_banco_invisivel: self._acao_excluir(id_reg)).pack(side="left", padx=2)
+                
     def _proxima_pagina(self):
         self.pagina_atual += 1
         self._renderizar_pagina()
