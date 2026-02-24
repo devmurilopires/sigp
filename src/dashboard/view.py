@@ -2,19 +2,22 @@ import customtkinter as ctk
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.ticker import MaxNLocator
+from matplotlib.backends.backend_pdf import PdfPages
 import textwrap
+import io
 from datetime import datetime
+from tkinter import filedialog, messagebox
 from src.dashboard.service import DashboardService
 
 # --- Paleta de Cores Premium ---
 COLOR_BG = "#F4F6F9"          
 COLOR_WHITE = "#FFFFFF"       
-COLOR_PRIMARY = "#0F8C75"     # Verde Escuro
-COLOR_SECONDARY = "#14B5D9"   # Azul Claro
+COLOR_PRIMARY = "#0F8C75"     
+COLOR_SECONDARY = "#14B5D9"   
 COLOR_TEXT = "#333333"
-COLOR_DANGER = "#D32F2F"      # Vermelho
-COLOR_WARNING = "#F29C1F"     # Laranja
+COLOR_DANGER = "#D32F2F"      
+COLOR_WARNING = "#F29C1F"     
+COLOR_TECH = "#8E44AD"        
 
 class DashboardView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -24,9 +27,12 @@ class DashboardView(ctk.CTkFrame):
         self.service = DashboardService()
         self.df_os_raw = pd.DataFrame()
         self.df_par_raw = pd.DataFrame()
+        
+        self.df_os_f = pd.DataFrame()
+        self.df_par_f = pd.DataFrame()
+        self.fig = None 
 
         self._construir_interface()
-        # Faz o carregamento completo (Banco + Tela) na inicialização
         self.atualizar_completo()
 
     def _construir_interface(self):
@@ -36,9 +42,14 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(frame_filtros, text="Painel Analítico Gerencial", font=("Arial Black", 22), text_color=COLOR_PRIMARY).pack(side="left", padx=20, pady=20)
 
-        # AGORA O BOTÃO CHAMA "atualizar_completo" PARA BUSCAR DADOS NOVOS NO BANCO!
-        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color="#0B6B59", width=120, height=35, command=self.atualizar_completo)
-        self.btn_filtrar.pack(side="right", padx=20, pady=17)
+        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 PDF", font=("Arial Bold", 13), fg_color="#E74C3C", hover_color="#C0392B", width=70, height=35, command=self.exportar_pdf)
+        self.btn_pdf.pack(side="right", padx=10, pady=17)
+
+        self.btn_excel = ctk.CTkButton(frame_filtros, text="📥 EXCEL", font=("Arial Bold", 13), fg_color="#27AE60", hover_color="#1E8449", width=80, height=35, command=self.exportar_excel)
+        self.btn_excel.pack(side="right", padx=5, pady=17)
+
+        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color="#0B6B59", width=110, height=35, command=self.atualizar_completo)
+        self.btn_filtrar.pack(side="right", padx=(20, 5), pady=17)
 
         self.cb_mes = ctk.CTkComboBox(frame_filtros, values=["Todos", "01 - Jan", "02 - Fev", "03 - Mar", "04 - Abr", "05 - Mai", "06 - Jun", "07 - Jul", "08 - Ago", "09 - Set", "10 - Out", "11 - Nov", "12 - Dez"], width=130, height=35)
         self.cb_mes.set("Todos")
@@ -62,26 +73,11 @@ class DashboardView(ctk.CTkFrame):
         self.frame_graficos = ctk.CTkFrame(self.scroll_area, fg_color="transparent")
         self.frame_graficos.pack(fill="both", expand=True, pady=10)
 
-    def criar_card(self, parent, titulo, valor, cor_destaque, icone):
-        card = ctk.CTkFrame(parent, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
-        barra = ctk.CTkFrame(card, fg_color=cor_destaque, width=6, corner_radius=8)
-        barra.pack(side="left", fill="y")
-        
-        conteudo = ctk.CTkFrame(card, fg_color="transparent")
-        conteudo.pack(side="left", fill="both", expand=True, padx=15, pady=10)
-        
-        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 13), text_color="#777777").pack(anchor="w")
-        
-        linha_valor = ctk.CTkFrame(conteudo, fg_color="transparent")
-        linha_valor.pack(fill="x", expand=True)
-        ctk.CTkLabel(linha_valor, text=valor, font=("Arial Black", 32), text_color=COLOR_TEXT).pack(side="left", pady=(5,0))
-        ctk.CTkLabel(linha_valor, text=icone, font=("Arial", 28)).pack(side="right", pady=(5,0))
-        return card
-
-    def _desenhar_tabela(self, df_os):
-        for w in self.frame_tabela.winfo_children(): w.destroy()
-        if df_os.empty: return
-
+    # =========================================================
+    # INTELIGÊNCIA DE EXPORTAÇÃO (NOVA TABELA E ESTILOS)
+    # =========================================================
+    def _gerar_dataframe_resumo(self):
+        """Cria o DataFrame da Tabela Resumo para ser usado no PDF e Excel"""
         itens_painel = [
             "IMPLANTAÇÃO PLACA/POSTE", "IMPLANTAÇÃO PLACA/BARROTE", "IMPLANTAÇÃO ABRIGO METÁLICO", "IMPLANTAÇÃO PARADA SEGURA",
             "TRANSFERÊNCIA PLACA/POSTE", "TRANSFERÊNCIA PLACA/BARROTE", "TRANSFERÊNCIA ABRIGO METÁLICO", "TRANSFERÊNCIA PARADA SEGURA",
@@ -89,80 +85,253 @@ class DashboardView(ctk.CTkFrame):
             "SUBSTITUIÇÃO PLACA/POSTE", "SUBSTITUIÇÃO PLACA/BARROTE", "SUBSTITUIÇÃO ABRIGO CONCRETO", "SUBSTITUIÇÃO ABRIGO METÁLICO",
             "MANUTENÇÃO PLACA/POSTE", "MANUTENÇÃO PLACA/BARROTE", "MANUTENÇÃO ABRIGO METÁLICO", "MANUTENÇÃO PARADA SEGURA",
         ]
-        colunas = ["OPERAÇÃO / PONTO DE PARADA", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ", "TOTAL"]
-        dados_agrupados = {}
+        meses_pt = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
         
-        for _, row in df_os.iterrows():
-            chave_raw = f"{self.service.normalizar(row['tipo_os'])} {self.service.normalizar(row['tipo_item'])}"
-            try: mes = row['data_dt'].month
-            except: continue 
+        dados_tabela = []
+        for item in itens_painel:
+            linha = {"OPERAÇÃO / PONTO DE PARADA": item}
+            for mes in meses_pt: linha[mes] = 0
+            linha["TOTAL"] = 0
+            dados_tabela.append(linha)
             
-            if chave_raw == "REMOCAO ABRIGO CONCRETO/METALICO":
-                dados_agrupados.setdefault("REMOCAO ABRIGO CONCRETO", {}).setdefault(mes, 0)
-                dados_agrupados.setdefault("REMOCAO ABRIGO METALICO", {}).setdefault(mes, 0)
-                dados_agrupados["REMOCAO ABRIGO CONCRETO"][mes] += 0.5
-                dados_agrupados["REMOCAO ABRIGO METALICO"][mes] += 0.5
-            elif chave_raw == "SUBSTITUICAO ABRIGO CONCRETO/METALICO":
-                dados_agrupados.setdefault("SUBSTITUICAO ABRIGO CONCRETO", {}).setdefault(mes, 0)
-                dados_agrupados.setdefault("SUBSTITUICAO ABRIGO METALICO", {}).setdefault(mes, 0)
-                dados_agrupados["SUBSTITUICAO ABRIGO CONCRETO"][mes] += 0.5
-                dados_agrupados["SUBSTITUICAO ABRIGO METALICO"][mes] += 0.5
-            else:
-                dados_agrupados.setdefault(chave_raw, {})
-                dados_agrupados[chave_raw][mes] = dados_agrupados[chave_raw].get(mes, 0) + 1
+        df_resumo = pd.DataFrame(dados_tabela)
+
+        if not self.df_os_f.empty:
+            for _, row in self.df_os_f.iterrows():
+                try: 
+                    mes_idx = row['data_dt'].month - 1
+                    mes_nome = meses_pt[mes_idx]
+                    chave_raw = f"{self.service.normalizar(row['tipo_os'])} {self.service.normalizar(row['tipo_item'])}"
+                    
+                    idx_list = []
+                    if chave_raw == "REMOCAO ABRIGO CONCRETO/METALICO":
+                        idx_list = [df_resumo[df_resumo['OPERAÇÃO / PONTO DE PARADA'] == "REMOÇÃO ABRIGO CONCRETO"].index[0], df_resumo[df_resumo['OPERAÇÃO / PONTO DE PARADA'] == "REMOÇÃO ABRIGO METÁLICO"].index[0]]
+                    elif chave_raw == "SUBSTITUICAO ABRIGO CONCRETO/METALICO":
+                        idx_list = [df_resumo[df_resumo['OPERAÇÃO / PONTO DE PARADA'] == "SUBSTITUIÇÃO ABRIGO CONCRETO"].index[0], df_resumo[df_resumo['OPERAÇÃO / PONTO DE PARADA'] == "SUBSTITUIÇÃO ABRIGO METÁLICO"].index[0]]
+                    else:
+                        match = df_resumo[df_resumo['OPERAÇÃO / PONTO DE PARADA'].apply(self.service.normalizar) == chave_raw]
+                        if not match.empty: idx_list = [match.index[0]]
+
+                    for i in idx_list:
+                        df_resumo.at[i, mes_nome] += 1 if len(idx_list)==1 else 0.5
+                        df_resumo.at[i, "TOTAL"] += 1 if len(idx_list)==1 else 0.5
+                except: pass
+        
+        # Adiciona a linha de Total Geral no rodapé do DataFrame
+        total_row = {"OPERAÇÃO / PONTO DE PARADA": "TOTAL GERAL"}
+        for col in meses_pt + ["TOTAL"]:
+            total_row[col] = df_resumo[col].sum()
+        df_resumo.loc[len(df_resumo)] = total_row
+
+        return df_resumo
+
+    def exportar_pdf(self):
+        if self.fig is None:
+            messagebox.showwarning("Aviso", "Não há gráficos para exportar.")
+            return
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("Arquivo PDF", "*.pdf")], title="Salvar Relatório em PDF")
+        if filepath:
+            try:
+                df_resumo = self._gerar_dataframe_resumo()
+                
+                # Aumentei a "lona" do PDF (16x9) para dar mais espaço nas laterais
+                fig_table, ax_table = plt.subplots(figsize=(16, 9), facecolor='#FFFFFF')
+                fig_table.patch.set_facecolor('#FFFFFF')
+                ax_table.axis('off')
+                
+                # Uso do suptitle em vez de set_title para não encavalar na tabela
+                fig_table.suptitle("Resumo Consolidado de Intervenções (OS)", fontsize=22, fontweight='bold', color="#333333", y=0.92)
+                
+                cell_text = []
+                for row in df_resumo.values:
+                    formatted_row = [row[0]] + [str(int(x)) if x == int(x) else str(x) for x in row[1:]]
+                    cell_text.append(formatted_row)
+
+                # Cria a tabela
+                table = ax_table.table(cellText=cell_text, colLabels=df_resumo.columns, cellLoc='center', loc='center')
+                table.auto_set_font_size(False)
+                table.set_fontsize(11) # Fonte um pouquinho mais ajustada
+                table.scale(1, 1.8) # Estica as linhas para ficarem mais altas
+                
+                # MÁGICA DO ALINHAMENTO E LARGURA DAS COLUNAS
+                for (row, col), cell in table.get_celld().items():
+                    # Cores do Cabeçalho e Rodapé
+                    if row == 0: 
+                        cell.set_text_props(weight='bold', color='white')
+                        cell.set_facecolor('#0F8C75')
+                    elif row == len(df_resumo): 
+                        cell.set_text_props(weight='bold')
+                        cell.set_facecolor('#E0E4E8')
+                    
+                    # Largura Personalizada
+                    if col == 0: 
+                        cell._loc = 'left' 
+                        cell.set_width(0.35) # A primeira coluna ocupa 35% da página
+                    else:
+                        cell.set_width(0.05) # Os meses ocupam 5% cada (totalizando os outros 65%)
+
+                # Trava a área de desenho para o título não bater na tabela
+                fig_table.tight_layout(rect=[0.02, 0.05, 0.98, 0.88])
+
+                # SALVANDO MULTIPÁGINAS
+                with PdfPages(filepath) as pdf:
+                    pdf.savefig(fig_table, bbox_inches='tight', pad_inches=0.3) # Salva Página 1
+                    pdf.savefig(self.fig, bbox_inches='tight', pad_inches=0.3)  # Salva Página 2
+                    
+                plt.close(fig_table)
+                messagebox.showinfo("Sucesso", "Relatório Executivo PDF gerado com sucesso!\n\nPágina 1: Tabela Resumo\nPágina 2: Gráficos Analíticos")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Falha ao salvar PDF:\n{e}")
+
+    def exportar_excel(self):
+        filepath = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Planilha Excel", "*.xlsx")], title="Salvar Relatório em Excel")
+        if not filepath:
+            return
+
+        try:
+            df_resumo = self._gerar_dataframe_resumo()
+            
+            with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
+                workbook = writer.book
+                
+                # ABA 1: TABELA RESUMO ESTILIZADA
+                df_resumo.to_excel(writer, sheet_name='Resumo_Produção', index=False)
+                worksheet = writer.sheets['Resumo_Produção']
+                
+                # Criando os estilos (Formatos)
+                header_format = workbook.add_format({'bold': True, 'bg_color': '#0F8C75', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+                cell_format = workbook.add_format({'border': 1, 'align': 'center'})
+                first_col_format = workbook.add_format({'border': 1, 'align': 'left'})
+                total_format = workbook.add_format({'bold': True, 'bg_color': '#E0E4E8', 'border': 1, 'align': 'center'})
+                total_first_col = workbook.add_format({'bold': True, 'bg_color': '#E0E4E8', 'border': 1, 'align': 'left'})
+                
+                # Aplicando formatação no Cabeçalho
+                for col_num, value in enumerate(df_resumo.columns.values):
+                    worksheet.write(0, col_num, value, header_format)
+                
+                # Aplicando largura das colunas e estilo do corpo
+                worksheet.set_column('A:A', 38, first_col_format) # Coluna de Nomes mais larga
+                worksheet.set_column('B:N', 9, cell_format)       # Meses e Total
+                
+                # Colorindo a última linha (TOTAL GERAL)
+                last_row_idx = len(df_resumo)
+                worksheet.write(last_row_idx, 0, df_resumo.iloc[-1, 0], total_first_col)
+                for col_num in range(1, len(df_resumo.columns)):
+                    worksheet.write(last_row_idx, col_num, df_resumo.iloc[-1, col_num], total_format)
+                
+                # ABA 2 e 3: DADOS BRUTOS PARA POWER BI
+                if not self.df_os_f.empty:
+                    df_os_export = self.df_os_f.copy()
+                    df_os_export['data_dt'] = df_os_export['data_dt'].dt.strftime('%d/%m/%Y')
+                    df_os_export.to_excel(writer, sheet_name='Dados_Brutos_OS', index=False)
+                
+                if not self.df_par_f.empty:
+                    df_par_export = self.df_par_f.copy()
+                    df_par_export['data_dt'] = df_par_export['data_dt'].dt.strftime('%d/%m/%Y')
+                    df_par_export.to_excel(writer, sheet_name='Dados_Brutos_Parecer', index=False)
+                
+                # ABA 4: GRÁFICOS RECORTADOS
+                if self.fig is not None:
+                    ws_graficos = workbook.add_worksheet('Gráficos_Individuais')
+                    renderer = self.fig.canvas.get_renderer()
+                    linha_atual = 1
+                    
+                    for i, ax in enumerate(self.fig.axes):
+                        if ax.has_data() or len(ax.patches) > 0 or len(ax.lines) > 0:
+                            bbox = ax.get_tightbbox(renderer).transformed(self.fig.dpi_scale_trans.inverted())
+                            img_io = io.BytesIO()
+                            self.fig.savefig(img_io, format='png', bbox_inches=bbox, dpi=120) 
+                            img_io.seek(0)
+                            
+                            coluna = 'A' if i % 2 == 0 else 'I'
+                            ws_graficos.insert_image(f'{coluna}{linha_atual}', 'grafico.png', {'image_data': img_io})
+                            if i % 2 != 0: linha_atual += 22 
+
+            messagebox.showinfo("Sucesso", "Planilha Excel Gerada e Formatada com Sucesso!\n\nFoi aplicada a paleta de cores institucional e separação de abas.")
+        except Exception as e:
+            messagebox.showerror("Erro de Exportação", f"Erro ao gerar o arquivo Excel:\n{e}\n\nVerifique se o arquivo não está aberto em outro programa.")
+
+    # =========================================================
+    # RENDERIZAÇÃO DE COMPONENTES UI
+    # =========================================================
+    def criar_card(self, parent, titulo, valor, cor_destaque, icone):
+        card = ctk.CTkFrame(parent, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
+        barra = ctk.CTkFrame(card, fg_color=cor_destaque, width=6, corner_radius=8)
+        barra.pack(side="left", fill="y")
+        conteudo = ctk.CTkFrame(card, fg_color="transparent")
+        conteudo.pack(side="left", fill="both", expand=True, padx=15, pady=10)
+        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 13), text_color="#777777").pack(anchor="w")
+        linha_valor = ctk.CTkFrame(conteudo, fg_color="transparent")
+        linha_valor.pack(fill="x", expand=True)
+        ctk.CTkLabel(linha_valor, text=valor, font=("Arial Black", 32), text_color=COLOR_TEXT).pack(side="left", pady=(5,0))
+        ctk.CTkLabel(linha_valor, text=icone, font=("Arial", 28)).pack(side="right", pady=(5,0))
+        return card
+
+    def _desenhar_tabela(self, df_os):
+        """Desenha a tabela que aparece VISUALMENTE na tela do sistema"""
+        for w in self.frame_tabela.winfo_children(): w.destroy()
+        if df_os.empty: return
+
+        df_resumo = self._gerar_dataframe_resumo()
+        # Remove a última linha (Total Geral) para desenhar o rodapé manualmente
+        df_corpo = df_resumo.iloc[:-1]
+        linha_total = df_resumo.iloc[-1]
 
         container = ctk.CTkFrame(self.frame_tabela, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
         container.pack(fill="x", padx=5)
 
+        # Cabeçalho
         header_frame = ctk.CTkFrame(container, fg_color=COLOR_PRIMARY, corner_radius=6, height=35)
         header_frame.pack(fill="x", padx=2, pady=2)
-        for i, col in enumerate(colunas):
+        for i, col in enumerate(df_resumo.columns):
             largura = 280 if i == 0 else 50
             ctk.CTkLabel(header_frame, text=col, font=("Arial Bold", 11), text_color="white", width=largura, anchor="w" if i==0 else "center").pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
 
-        totais_colunas = [0] * 13 
-        for idx, item_nome in enumerate(itens_painel):
-            chave = self.service.normalizar(item_nome)
-            meses_dict = dados_agrupados.get(chave, {})
-            
+        # Corpo
+        for idx, row in df_corpo.iterrows():
             bg_color = "#F9F9F9" if idx % 2 == 0 else "#FFFFFF"
             row_frame = ctk.CTkFrame(container, fg_color=bg_color, corner_radius=0, height=28)
             row_frame.pack(fill="x", padx=2)
+            for i, col in enumerate(df_corpo.columns):
+                largura = 280 if i == 0 else 50
+                val = row[col]
+                
+                # CORREÇÃO: Verifica primeiro se é a coluna de texto (i == 0)
+                if i == 0: 
+                    texto_val = str(val)
+                else:
+                    # Só tenta formatar o número se tiver certeza que não é a coluna de texto
+                    texto_val = str(int(val)) if val > 0 and val == int(val) else str(val) if val > 0 else "-"
+                
+                ctk.CTkLabel(row_frame, text=texto_val, font=("Arial Bold" if col=="TOTAL" else "Arial", 11), text_color="#000" if col=="TOTAL" else "#333", anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
 
-            ctk.CTkLabel(row_frame, text=item_nome, font=("Arial", 11), text_color="#333", anchor="w", width=280).pack(side="left", fill="x", expand=True, padx=10)
-
-            linha_total = 0
-            for m in range(1, 13):
-                val = int(meses_dict.get(m, 0))
-                totais_colunas[m-1] += val
-                linha_total += val
-                ctk.CTkLabel(row_frame, text=str(val) if val > 0 else "-", font=("Arial", 11), text_color="#555", width=50).pack(side="left", fill="x", expand=True)
-
-            totais_colunas[12] += linha_total
-            ctk.CTkLabel(row_frame, text=str(linha_total), font=("Arial Bold", 11), text_color="#000", width=50).pack(side="left", fill="x", expand=True)
-
+        # Rodapé
         total_frame = ctk.CTkFrame(container, fg_color="#E0E4E8", corner_radius=0, height=35)
         total_frame.pack(fill="x", padx=2, pady=(0, 2))
-        ctk.CTkLabel(total_frame, text="TOTAL GERAL POR MÊS", font=("Arial Black", 12), text_color=COLOR_PRIMARY, anchor="w", width=280).pack(side="left", fill="x", expand=True, padx=10)
-        for val in totais_colunas:
-             ctk.CTkLabel(total_frame, text=str(val), font=("Arial Black", 12), text_color=COLOR_PRIMARY, width=50).pack(side="left", fill="x", expand=True)
+        for i, col in enumerate(df_resumo.columns):
+            largura = 280 if i == 0 else 50
+            val = linha_total[col]
+            
+            # CORREÇÃO: Proteção garantida no Rodapé
+            if i == 0: 
+                texto_val = "TOTAL GERAL POR MÊS"
+            else:
+                texto_val = str(int(val)) if val == int(val) else str(val)
+                
+            ctk.CTkLabel(total_frame, text=texto_val, font=("Arial Black", 12), text_color=COLOR_PRIMARY, anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
 
-
-    def _configurar_eixo(self, ax, titulo):
-        ax.set_title(titulo, fontsize=12, fontweight='bold', color="#444", pad=15)
+    def _configurar_eixo(self, ax, titulo, grid_axis='y'):
+        ax.set_title(titulo, fontsize=13, fontweight='bold', color="#444", pad=15)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_color('#DDDDDD')
         ax.spines['bottom'].set_color('#DDDDDD')
         ax.tick_params(colors='#555555')
-        ax.grid(axis='y', linestyle='--', alpha=0.3, color='#DDDDDD') 
+        ax.grid(axis=grid_axis, linestyle='--', alpha=0.3, color='#DDDDDD') 
         ax.set_facecolor(COLOR_WHITE)
 
-    # =========================================================
-    # FUNÇÃO QUE RESOLVE TUDO (TEMPO REAL E GRÁFICOS)
-    # =========================================================
     def atualizar_completo(self):
-        """Busca do banco novamente E atualiza os gráficos"""
         self.df_os_raw, self.df_par_raw = self.service.carregar_dados_brutos()
         self.atualizar_dashboard()
 
@@ -173,11 +342,11 @@ class DashboardView(ctk.CTkFrame):
         mes_str = self.cb_mes.get()
         mes_sel = int(mes_str.split(" - ")[0]) if mes_str != "Todos" else None
 
-        df_os_f, df_par_f = self.service.filtrar_dados(self.df_os_raw, self.df_par_raw, ano_sel, mes_sel)
+        self.df_os_f, self.df_par_f = self.service.filtrar_dados(self.df_os_raw, self.df_par_raw, ano_sel, mes_sel)
 
         # 1. CARDS
         for w in self.frame_kpis.winfo_children(): w.destroy()
-        c_os, c_par, c_def, c_indef = self.service.calcular_kpis(df_os_f, df_par_f)
+        c_os, c_par, c_def, c_indef = self.service.calcular_kpis(self.df_os_f, self.df_par_f)
         
         self.frame_kpis.columnconfigure((0,1,2,3), weight=1)
         self.criar_card(self.frame_kpis, "TOTAL DE ORDENS (OS)", f"{c_os}", COLOR_PRIMARY, "📋").grid(row=0, column=0, padx=8, sticky="ew")
@@ -186,40 +355,36 @@ class DashboardView(ctk.CTkFrame):
         self.criar_card(self.frame_kpis, "PARECERES INDEFERIDOS", f"{c_indef}", COLOR_DANGER, "❌").grid(row=0, column=3, padx=8, sticky="ew")
 
         # 2. TABELA
-        self._desenhar_tabela(df_os_f)
+        self._desenhar_tabela(self.df_os_f)
 
         # 3. GRÁFICOS
         for w in self.frame_graficos.winfo_children(): w.destroy()
         
-        fig, axs = plt.subplots(4, 2, figsize=(14, 23), facecolor=COLOR_WHITE)
-        fig.patch.set_facecolor(COLOR_WHITE)
+        self.fig, axs = plt.subplots(6, 2, figsize=(14, 34), facecolor=COLOR_WHITE)
+        self.fig.patch.set_facecolor(COLOR_WHITE)
 
-        if df_os_f.empty and df_par_f.empty:
+        if self.df_os_f.empty and self.df_par_f.empty:
             axs[0,0].text(0.5, 0.5, "Sem dados para o filtro selecionado", ha='center', fontsize=14)
         else:
             meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
             meses_en = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-            # ----------------------------------------------------
-            # LINHA 1: Evolução Temporal
-            # ----------------------------------------------------
-            # 0,0: Evolução OS
+            # LINHA 1
             ax = axs[0, 0]
-            if not df_os_f.empty:
-                counts = df_os_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0)
+            if not self.df_os_f.empty:
+                counts = self.df_os_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0)
                 counts.index = meses_pt
                 bars = ax.bar(counts.index, counts.values, color=COLOR_PRIMARY, width=0.6)
                 max_val = max(counts.values) if len(counts)>0 else 1
-                ax.set_ylim(0, max_val * 1.15) # Aumenta o teto do gráfico em 15%
+                ax.set_ylim(0, max_val * 1.15)
                 for bar in bars:
                     h = bar.get_height()
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color=COLOR_PRIMARY)
-            self._configurar_eixo(ax, f"Evolução de OS Criadas ({ano_sel})")
+            self._configurar_eixo(ax, f"Evolução de OS Criadas ({ano_sel})", grid_axis='y')
 
-            # 0,1: Evolução Pareceres
             ax = axs[0, 1]
-            if not df_par_f.empty:
-                counts = df_par_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0)
+            if not self.df_par_f.empty:
+                counts = self.df_par_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0)
                 counts.index = meses_pt
                 bars = ax.bar(counts.index, counts.values, color=COLOR_SECONDARY, width=0.6)
                 max_val = max(counts.values) if len(counts)>0 else 1
@@ -227,54 +392,39 @@ class DashboardView(ctk.CTkFrame):
                 for bar in bars:
                     h = bar.get_height()
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color=COLOR_SECONDARY)
-            self._configurar_eixo(ax, f"Evolução de Pareceres Gerados ({ano_sel})")
+            self._configurar_eixo(ax, f"Evolução de Pareceres Gerados ({ano_sel})", grid_axis='y')
 
-
-            # ----------------------------------------------------
-            # LINHA 2: Carga de Trabalho e Produtividade (%)
-            # ----------------------------------------------------
-            # 1,0: Top 8 Solicitantes
+            # LINHA 2
             ax = axs[1, 0]
-            if not df_par_f.empty and 'solicitante' in df_par_f.columns:
-                counts = df_par_f['solicitante'].replace("", "Não Informado").fillna("Não Informado").value_counts().head(8)
+            if not self.df_os_f.empty and 'bairro' in self.df_os_f.columns:
+                counts = self.df_os_f['bairro'].replace("", "Não Informado").fillna("Não Informado").value_counts().head(8)
                 labels = [textwrap.fill(str(nome), width=25) for nome in counts.index]
-                bars = ax.barh(labels, counts.values, color="#F24822")
+                bars = ax.barh(labels, counts.values, color="#E67E22")
                 ax.invert_yaxis()
                 max_val = max(counts.values) if len(counts)>0 else 1
-                ax.set_xlim(0, max_val * 1.25) # Espaço lateral extra
+                ax.set_xlim(0, max_val * 1.2)
                 for bar in bars:
                     w = bar.get_width()
-                    if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color='#F24822')
-            self._configurar_eixo(ax, "Volume por Solicitante (Pareceres)")
+                    if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color='#E67E22')
+            self._configurar_eixo(ax, "Top 8 Bairros com Mais Intervenções (OS)", grid_axis='x')
 
-            # 1,1: Participação % (Share of Work)
             ax = axs[1, 1]
-            s1 = df_os_f['criado_por'].value_counts() if not df_os_f.empty else pd.Series()
-            s2 = df_par_f['criado_por'].value_counts() if not df_par_f.empty else pd.Series()
-            prod_total = s1.add(s2, fill_value=0).sort_values(ascending=False).head(8)
-            total_geral_sistema = len(df_os_f) + len(df_par_f)
-            
-            if not prod_total.empty and total_geral_sistema > 0:
-                labels = [textwrap.fill(str(nome), width=20) for nome in prod_total.index]
-                bars = ax.barh(labels, prod_total.values, color="#8E44AD")
+            if not self.df_par_f.empty and 'solicitante' in self.df_par_f.columns:
+                counts = self.df_par_f['solicitante'].replace("", "Não Informado").fillna("Não Informado").value_counts().head(8)
+                labels = [textwrap.fill(str(nome), width=25) for nome in counts.index]
+                bars = ax.barh(labels, counts.values, color="#D35400")
                 ax.invert_yaxis()
-                max_val = max(prod_total.values) if len(prod_total)>0 else 1
-                ax.set_xlim(0, max_val * 1.35) # Espaço gigante para caber a porcentagem
+                max_val = max(counts.values) if len(counts)>0 else 1
+                ax.set_xlim(0, max_val * 1.25) 
                 for bar in bars:
                     w = bar.get_width()
-                    if w > 0: 
-                        pct = (w / total_geral_sistema) * 100
-                        ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f"{int(w)} unid. ({pct:.1f}%)", va='center', ha='left', fontweight='bold', color='#8E44AD')
-            self._configurar_eixo(ax, "Produtividade Relativa (Carga de Trabalho %)")
+                    if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color='#D35400')
+            self._configurar_eixo(ax, "Volume por Solicitante (Pareceres)", grid_axis='x')
 
-
-            # ----------------------------------------------------
-            # LINHA 3: Qualidade e Status (Donut Charts)
-            # ----------------------------------------------------
-            # 2,0: Status OS
+            # LINHA 3
             ax = axs[2, 0]
-            if not df_os_f.empty and 'status_conclusao' in df_os_f.columns:
-                status_counts = df_os_f['status_conclusao'].fillna("NÃO").value_counts()
+            if not self.df_os_f.empty and 'status_conclusao' in self.df_os_f.columns:
+                status_counts = self.df_os_f['status_conclusao'].fillna("NÃO").value_counts()
                 if not status_counts.empty:
                     cores_map = {"SIM": "#28A745", "NÃO": COLOR_DANGER, "NÃO AUTORIZADA": COLOR_WARNING}
                     cores_grafico = [cores_map.get(str(x).upper(), "#999999") for x in status_counts.index]
@@ -284,10 +434,9 @@ class DashboardView(ctk.CTkFrame):
                 self._configurar_eixo(ax, "Status das Ordens de Serviço")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
 
-            # 2,1: Aprovação Pareceres
             ax = axs[2, 1]
-            if not df_par_f.empty and 'tipo' in df_par_f.columns:
-                taxa_counts = df_par_f['tipo'].str.upper().value_counts()
+            if not self.df_par_f.empty and 'tipo' in self.df_par_f.columns:
+                taxa_counts = self.df_par_f['tipo'].str.upper().value_counts()
                 if not taxa_counts.empty:
                     cores_map = {"DEFERIDO": "#28A745", "INDEFERIDO": COLOR_DANGER}
                     cores_grafico = [cores_map.get(str(x), "#999999") for x in taxa_counts.index]
@@ -297,49 +446,97 @@ class DashboardView(ctk.CTkFrame):
                 self._configurar_eixo(ax, "Taxa de Aprovação (Pareceres)")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
 
-
-            # ----------------------------------------------------
-            # LINHA 4: Natureza do Serviço (CORRIGIDO ROTAÇÃO DOS NOMES)
-            # ----------------------------------------------------
-            # 3,0: Natureza Ação OS
+            # LINHA 4
             ax = axs[3, 0]
-            if not df_os_f.empty and 'tipo_os' in df_os_f.columns:
-                counts = df_os_f['tipo_os'].str.upper().value_counts().head(5)
-                labels = [textwrap.fill(str(nome), width=12) for nome in counts.index] # Quebra de linha
+            if not self.df_os_f.empty and 'tipo_os' in self.df_os_f.columns:
+                counts = self.df_os_f['tipo_os'].str.upper().value_counts().head(5)
+                labels = [textwrap.fill(str(nome), width=12) for nome in counts.index]
                 bars = ax.bar(labels, counts.values, color="#34495E", width=0.5)
                 max_val = max(counts.values) if len(counts)>0 else 1
                 ax.set_ylim(0, max_val * 1.2)
-                
-                # ROTACIONA OS TEXTOS PARA NÃO ENCAVALAREM
                 ax.set_xticks(range(len(labels)))
                 ax.set_xticklabels(labels, rotation=20, ha='right', fontsize=9)
-                
                 for bar in bars:
                     h = bar.get_height()
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color="#34495E")
-            self._configurar_eixo(ax, "Natureza da Ação (OS)")
+            self._configurar_eixo(ax, "Natureza da Ação (OS)", grid_axis='y')
 
-            # 3,1: Tipos de Itens
             ax = axs[3, 1]
-            if not df_os_f.empty and 'tipo_item' in df_os_f.columns:
-                counts = df_os_f['tipo_item'].str.upper().value_counts().head(5)
-                labels = [textwrap.fill(str(nome), width=15) for nome in counts.index] # Quebra de linha
-                bars = ax.bar(labels, counts.values, color="#E67E22", width=0.5)
+            if not self.df_os_f.empty and 'tipo_item' in self.df_os_f.columns:
+                counts = self.df_os_f['tipo_item'].str.upper().value_counts().head(5)
+                labels = [textwrap.fill(str(nome), width=15) for nome in counts.index] 
+                bars = ax.bar(labels, counts.values, color="#D35400", width=0.5)
                 max_val = max(counts.values) if len(counts)>0 else 1
                 ax.set_ylim(0, max_val * 1.2)
-                
-                # ROTACIONA OS TEXTOS PARA NÃO ENCAVALAREM
                 ax.set_xticks(range(len(labels)))
                 ax.set_xticklabels(labels, rotation=20, ha='right', fontsize=9)
-                
                 for bar in bars:
                     h = bar.get_height()
-                    if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color="#E67E22")
-            self._configurar_eixo(ax, "Tipos de Itens Mais Demandados (OS)")
+                    if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color="#D35400")
+            self._configurar_eixo(ax, "Tipos de Itens Mais Demandados (OS)", grid_axis='y')
 
-        fig.tight_layout(pad=4.0, h_pad=5.0)
+            # LINHA 5
+            ax = axs[4, 0]
+            if not self.df_os_f.empty and 'criado_por' in self.df_os_f.columns:
+                counts = self.df_os_f['criado_por'].value_counts().head(8)
+                labels = [textwrap.fill(str(nome), width=20) for nome in counts.index]
+                bars = ax.barh(labels, counts.values, color=COLOR_PRIMARY)
+                ax.invert_yaxis()
+                max_val = max(counts.values) if len(counts)>0 else 1
+                ax.set_xlim(0, max_val * 1.25)
+                for bar in bars:
+                    w = bar.get_width()
+                    if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_PRIMARY)
+            self._configurar_eixo(ax, "Quantidade de OS por Técnico", grid_axis='x')
 
-        canvas = FigureCanvasTkAgg(fig, master=self.frame_graficos)
+            ax = axs[4, 1]
+            if not self.df_par_f.empty and 'criado_por' in self.df_par_f.columns:
+                counts = self.df_par_f['criado_por'].value_counts().head(8)
+                labels = [textwrap.fill(str(nome), width=20) for nome in counts.index]
+                bars = ax.barh(labels, counts.values, color=COLOR_SECONDARY)
+                ax.invert_yaxis()
+                max_val = max(counts.values) if len(counts)>0 else 1
+                ax.set_xlim(0, max_val * 1.25)
+                for bar in bars:
+                    w = bar.get_width()
+                    if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_SECONDARY)
+            self._configurar_eixo(ax, "Quantidade de Pareceres por Técnico", grid_axis='x')
+
+            # LINHA 6
+            ax = axs[5, 0]
+            s1 = self.df_os_f['criado_por'].value_counts() if not self.df_os_f.empty else pd.Series(dtype=int)
+            s2 = self.df_par_f['criado_por'].value_counts() if not self.df_par_f.empty else pd.Series(dtype=int)
+            prod_total = s1.add(s2, fill_value=0).sort_values(ascending=False).head(8)
+            total_geral_sistema = len(self.df_os_f) + len(self.df_par_f)
+            
+            if not prod_total.empty:
+                labels = [textwrap.fill(str(nome), width=20) for nome in prod_total.index]
+                bars = ax.barh(labels, prod_total.values, color=COLOR_TECH)
+                ax.invert_yaxis()
+                max_val = max(prod_total.values) if len(prod_total)>0 else 1
+                ax.set_xlim(0, max_val * 1.25)
+                for bar in bars:
+                    w = bar.get_width()
+                    if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_TECH)
+            self._configurar_eixo(ax, "Total por Técnico (OS + Parecer)", grid_axis='x')
+
+            ax = axs[5, 1]
+            if not prod_total.empty and total_geral_sistema > 0:
+                labels = [textwrap.fill(str(nome), width=20) for nome in prod_total.index]
+                bars = ax.barh(labels, prod_total.values, color="#3498DB")
+                ax.invert_yaxis()
+                max_val = max(prod_total.values) if len(prod_total)>0 else 1
+                ax.set_xlim(0, max_val * 1.30) 
+                for bar in bars:
+                    w = bar.get_width()
+                    if w > 0: 
+                        pct = (w / total_geral_sistema) * 100
+                        ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f"{pct:.1f}%", va='center', ha='left', fontweight='bold', color='#2980B9')
+            self._configurar_eixo(ax, "Produtividade Relativa (%)", grid_axis='x')
+
+        self.fig.tight_layout(pad=4.0, h_pad=5.0)
+
+        canvas = FigureCanvasTkAgg(self.fig, master=self.frame_graficos)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
