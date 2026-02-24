@@ -8,6 +8,7 @@ from src.parecer.view import renderizar as renderizar_parecer
 from src.relatorios.view import renderizar as renderizar_relatorios
 from src.historico.view import renderizar as renderizar_historico
 from src.dashboard.view import renderizar as renderizar_dashboard
+from src.enderecos.view import renderizar as renderizar_enderecos
 
 try:
     from src.shared.utils import resource_path
@@ -68,13 +69,6 @@ def iniciar_sistema(usuario_dados):
 
     abas = {}
 
-    def criar_placeholder(parent_frame, titulo_modulo):
-        container = ctk.CTkFrame(parent_frame, fg_color="transparent")
-        container.place(relx=0.5, rely=0.5, anchor="center")
-        ctk.CTkLabel(container, text="🚧", font=("Arial", 50)).pack(pady=10)
-        ctk.CTkLabel(container, text=titulo_modulo, font=("Arial Black", 24), text_color=COLOR_PRIMARY).pack(pady=5)
-        ctk.CTkLabel(container, text="Módulo em refatoração para a nova arquitetura.", font=("Arial", 15), text_color="gray").pack()
-
     for nome, _ in menu_botoes:
         aba = ctk.CTkFrame(frame_conteudo, fg_color="transparent")
         abas[nome] = aba
@@ -86,7 +80,7 @@ def iniciar_sistema(usuario_dados):
     renderizar_parecer(abas["Parecer Técnico"], usuario_dados)
     renderizar_relatorios(abas["Relatórios Parecer"], usuario_dados, tipo="PARECER")
     renderizar_historico(abas["Histórico"], usuario_dados)
-    if is_admin: criar_placeholder(abas["Cadastro de Endereço"], "Cadastro de Endereços")
+    if is_admin: renderizar_enderecos(abas["Cadastro de Endereço"], usuario_dados)
 
     def selecionar_aba(nome_aba):
         for aba in abas.values(): aba.pack_forget()

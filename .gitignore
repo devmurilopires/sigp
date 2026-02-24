@@ -1,6 +1,7 @@
 # --- SENHAS E CONFIGURAÇÕES SENSÍVEIS ---
 # Nunca suba o .env, pois ele contém a senha do seu banco de dados
 .env
+login_salvo.json
 
 # --- ARQUIVOS TEMPORÁRIOS DO PYTHON ---
 __pycache__/
