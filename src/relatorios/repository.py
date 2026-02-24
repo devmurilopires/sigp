@@ -4,12 +4,11 @@ from config.database import get_db_connection
 
 class RelatorioRepository:
     # =========================================================
-    # BUSCAS GERAIS (TABELA)
+    # BUSCAS GERAIS (TABELA) - Agora puxam o ID verdadeiro (PK)
     # =========================================================
     def buscar_ordens_servico(self, filtros):
-        # ATUALIZADO PARA AS COLUNAS NOVAS DO SIGP
         query = """
-            SELECT numero, data_criacao, id_principal, ids_adicionais, 
+            SELECT id, numero, data_criacao, id_principal, ids_adicionais, 
                    acao_realizada, tipo_item, endereco, bairro, 
                    status_conclusao, data_conclusao, pasta_rede, responsavel
             FROM sigp.ordens_servico WHERE 1=1
@@ -50,27 +49,24 @@ class RelatorioRepository:
                     cursor.execute(query, params)
                     return cursor.fetchall()
         except Exception as e:
-            print(f"Erro ao buscar OS: {e}") # Agora vai printar no terminal se der erro
+            print(f"Erro ao buscar OS: {e}")
             return []
 
     def buscar_pareceres(self, filtros):
-        # ATUALIZADO PARA AS COLUNAS NOVAS DA TABELA FILHA E MÃE
         query = """
-            SELECT b.numero_parecer_ano, p.tipo_parecer, p.processo, p.assunto, 
+            SELECT p.id, b.numero_parecer_ano, p.tipo_parecer, p.processo, p.assunto, 
                    p.ids_associados, p.solicitante, b.created_at, u.nome_completo, p.caminho_arquivo
             FROM sigp.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id WHERE 1=1
         """
         params = []
-        
         if filtros.get('solicitante') and filtros['solicitante'] != "Todos":
             query += " AND p.solicitante = %s"
             params.append(filtros['solicitante'])
         if filtros.get('assunto') and filtros['assunto'] != "Todos":
             query += " AND p.assunto = %s"
             params.append(filtros['assunto'])
-            
         if filtros.get('processo'):
             query += " AND p.processo ILIKE %s"
             params.append(f"%{filtros['processo']}%")
@@ -101,19 +97,19 @@ class RelatorioRepository:
             return []
 
     # =========================================================
-    # BUSCA DE TODOS OS DETALHES (POPUP)
+    # BUSCA DE TODOS OS DETALHES (POPUP) - Usa o ID invisível
     # =========================================================
-    def buscar_detalhes_os(self, numero):
+    def buscar_detalhes_os(self, id_banco):
         query = """
             SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), id_principal, ids_adicionais, 
                    acao_realizada, tipo_item, endereco, bairro, complemento,
                    descricoes, responsavel, pasta_rede, status_conclusao
-            FROM sigp.ordens_servico WHERE numero = %s
+            FROM sigp.ordens_servico WHERE id = %s
         """
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, (numero,))
+                    cursor.execute(query, (id_banco,))
                     row = cursor.fetchone()
                     if row:
                         colunas = ["Nº OS", "Data Criação", "ID Principal", "IDs Adicionais", 
@@ -124,7 +120,7 @@ class RelatorioRepository:
             print(f"Erro Detalhes OS: {e}")
         return None
 
-    def buscar_detalhes_parecer(self, numero):
+    def buscar_detalhes_parecer(self, id_banco):
         query = """
             SELECT b.numero_parecer_ano, TO_CHAR(b.created_at, 'DD/MM/YYYY'), p.tipo_parecer, 
                    p.processo, p.assunto, p.solicitante, p.ids_associados, p.tipo_execucao, 
@@ -132,12 +128,12 @@ class RelatorioRepository:
             FROM sigp.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
-            WHERE b.numero_parecer_ano = %s AND b.sistema_origem = 'SIGP'
+            WHERE p.id = %s
         """
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, (numero,))
+                    cursor.execute(query, (id_banco,))
                     row = cursor.fetchone()
                     if row:
                         colunas = ["Nº Parecer", "Data Criação", "Decisão (DEFERIDO/INDEFERIDO)", "Processo", 
@@ -149,9 +145,9 @@ class RelatorioRepository:
         return None
 
     # =========================================================
-    # ATUALIZAÇÃO NO BANCO (COM MAIÚSCULAS)
+    # ATUALIZAÇÃO NO BANCO - Atualiza usando o ID verdadeiro
     # =========================================================
-    def atualizar_os(self, numero, dados):
+    def atualizar_os(self, id_banco, dados):
         query = """
             UPDATE sigp.ordens_servico 
             SET id_principal=%s, ids_adicionais=%s, acao_realizada=%s, 
@@ -161,7 +157,7 @@ class RelatorioRepository:
                     WHEN %s IN ('SIM', 'NÃO AUTORIZADA') THEN COALESCE(data_conclusao, CURRENT_TIMESTAMP)
                     ELSE NULL 
                 END
-            WHERE numero=%s
+            WHERE id=%s
         """
         status = dados.get("Status Conclusão", "NÃO").strip().upper()
         acao_up = str(dados.get("Ação Realizada", "")).strip().upper()
@@ -173,19 +169,19 @@ class RelatorioRepository:
                     cursor.execute(query, (
                         dados.get("ID Principal"), dados.get("IDs Adicionais"), acao_up, 
                         item_up, dados.get("Endereço"), dados.get("Bairro"), 
-                        dados.get("Complemento"), dados.get("Descrição (Croqui)"), status, status, numero
+                        dados.get("Complemento"), dados.get("Descrição (Croqui)"), status, status, id_banco
                     ))
             return True, "Ordem de Serviço atualizada com sucesso!"
         except Exception as e:
             return False, f"Erro ao atualizar: {e}"
 
-    def atualizar_parecer(self, numero, dados):
+    def atualizar_parecer(self, id_banco, dados):
         query = """
             UPDATE sigp.pareceres 
             SET tipo_parecer=%s, processo=%s, assunto=%s, solicitante=%s, 
                 ids_associados=%s, tipo_execucao=%s, item=%s, endereco=%s,
                 quantidade=%s, motivo_indeferimento=%s
-            WHERE id = (SELECT id FROM common.pareceres_base WHERE numero_parecer_ano = %s AND sistema_origem = 'SIGP' LIMIT 1)
+            WHERE id = %s
         """
         try:
             with get_db_connection() as conn:
@@ -194,34 +190,30 @@ class RelatorioRepository:
                         dados.get("Decisão (DEFERIDO/INDEFERIDO)"), dados.get("Processo"), dados.get("Assunto"), 
                         dados.get("Solicitante"), dados.get("IDs dos Pontos"), dados.get("Ação Recomendada"), 
                         dados.get("Item"), dados.get("Endereço"), dados.get("Quantidade"), 
-                        dados.get("Motivo (Indeferido)"), numero
+                        dados.get("Motivo (Indeferido)"), id_banco
                     ))
             return True, "Parecer atualizado com sucesso!"
         except Exception as e:
             return False, f"Erro ao atualizar: {e}"
 
     # =========================================================
-    # DADOS PARA EXCLUSÃO DE ARQUIVOS E DELETAR DO BANCO
+    # DADOS PARA EXCLUSÃO E CAMINHOS
     # =========================================================
-    def obter_dados_para_caminho_os(self, numero):
-        query = "SELECT data_criacao, id_principal, ids_adicionais, pasta_rede FROM sigp.ordens_servico WHERE numero = %s"
+    def obter_dados_para_caminho_os(self, id_banco):
+        query = "SELECT numero, data_criacao, id_principal, ids_adicionais, pasta_rede FROM sigp.ordens_servico WHERE id = %s"
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, (numero,))
+                    cur.execute(query, (id_banco,))
                     return cur.fetchone()
         except: return None
 
-    def obter_caminho_parecer(self, numero):
-        query = """
-            SELECT p.caminho_arquivo FROM sigp.pareceres p
-            JOIN common.pareceres_base b ON p.id = b.id
-            WHERE b.numero_parecer_ano = %s AND b.sistema_origem = 'SIGP'
-        """
+    def obter_caminho_parecer(self, id_banco):
+        query = "SELECT caminho_arquivo FROM sigp.pareceres WHERE id = %s"
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, (numero,))
+                    cur.execute(query, (id_banco,))
                     res = cur.fetchone()
                     return res[0] if res else None
         except: return None
@@ -229,36 +221,39 @@ class RelatorioRepository:
     # =========================================================
     # EXCLUSÃO SEGURA COM LOG DE AUDITORIA (LIXEIRA)
     # =========================================================
-    def excluir_e_logar_os(self, numero, dados_json, caminho_original, motivo, excluido_por):
+    def excluir_e_logar_os(self, id_banco, dados_json, caminho_original, motivo, excluido_por):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    cur.execute("SELECT numero FROM sigp.ordens_servico WHERE id = %s", (id_banco,))
+                    numero_real = cur.fetchone()[0]
+
                     cur.execute("""
                         INSERT INTO common.lixeira (modulo, numero, dados, caminho_original, motivo, excluido_por)
                         VALUES ('OS_SIGP', %s, %s, %s, %s, %s)
-                    """, (numero, json.dumps(dados_json, ensure_ascii=False), caminho_original, motivo, excluido_por))
+                    """, (numero_real, json.dumps(dados_json, ensure_ascii=False), caminho_original, motivo, excluido_por))
                     
-                    cur.execute("DELETE FROM sigp.ordens_servico WHERE numero = %s", (numero,))
+                    cur.execute("DELETE FROM sigp.ordens_servico WHERE id = %s", (id_banco,))
             return True, "OS excluída e registrada no Histórico com sucesso!"
         except Exception as e:
             return False, f"Erro no banco ao excluir: {e}"
 
-    def excluir_e_logar_parecer(self, numero, dados_json, caminho_original, motivo, excluido_por):
+    def excluir_e_logar_parecer(self, id_banco, dados_json, caminho_original, motivo, excluido_por):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT id FROM common.pareceres_base WHERE numero_parecer_ano = %s AND sistema_origem = 'SIGP' LIMIT 1", (numero,))
+                    cur.execute("SELECT numero_parecer_ano FROM common.pareceres_base WHERE id = %s", (id_banco,))
                     linha = cur.fetchone()
                     if not linha: return False, "Parecer não encontrado."
-                    id_parecer = linha[0]
+                    numero_real = linha[0]
 
                     cur.execute("""
                         INSERT INTO common.lixeira (modulo, numero, dados, caminho_original, motivo, excluido_por)
                         VALUES ('PARECER_SIGP', %s, %s, %s, %s, %s)
-                    """, (numero, json.dumps(dados_json, ensure_ascii=False), caminho_original, motivo, excluido_por))
+                    """, (numero_real, json.dumps(dados_json, ensure_ascii=False), caminho_original, motivo, excluido_por))
 
-                    cur.execute("DELETE FROM sigp.pareceres WHERE id = %s", (id_parecer,))
-                    cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (id_parecer,))
+                    cur.execute("DELETE FROM sigp.pareceres WHERE id = %s", (id_banco,))
+                    cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (id_banco,))
                     
             return True, "Parecer excluído e registrado no Histórico com sucesso!"
         except Exception as e:
