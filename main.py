@@ -54,8 +54,8 @@ def iniciar_sistema(usuario_dados):
     menu_container.pack(fill="x", padx=10, pady=(15, 0))
 
     menu_botoes = [
-        ("Ordem de Serviço", COLOR_PRIMARY),
         ("Gráficos", COLOR_PRIMARY),
+        ("Ordem de Serviço", COLOR_PRIMARY),
         ("Relatórios OS", COLOR_PRIMARY),
         ("Parecer Técnico", COLOR_PRIMARY),
         ("Relatórios Parecer", COLOR_PRIMARY),
