@@ -28,10 +28,18 @@ class RelatorioService:
             
             status = status_conclusao or "NÃO"
             dias_aberto = "-"
-            if status == "NÃO" and dt_criacao:
-                dias_aberto = f"{(datetime.now().date() - dt_criacao).days} dias"
-            elif status in ["SIM", "NÃO AUTORIZADA"] and dt_criacao and dt_conclusao:
-                dias_aberto = f"{(dt_conclusao - dt_criacao).days} dias"
+            
+            # --- CORREÇÃO DE DATAS AQUI ---
+            # Garante que o Python vai usar apenas a Data (ignorando a Hora do TIMESTAMP do banco)
+            if dt_criacao:
+                d_criacao = dt_criacao.date() if type(dt_criacao) is datetime else dt_criacao
+                
+                if status == "NÃO":
+                    dias_aberto = f"{(datetime.now().date() - d_criacao).days} dias"
+                elif status in ["SIM", "NÃO AUTORIZADA"] and dt_conclusao:
+                    d_conclusao = dt_conclusao.date() if type(dt_conclusao) is datetime else dt_conclusao
+                    dias_aberto = f"{(d_conclusao - d_criacao).days} dias"
+            # ------------------------------
 
             caminho_arquivo = self._reconstruir_caminho_os(pasta, numero, dt_criacao, todos_ids)
 
