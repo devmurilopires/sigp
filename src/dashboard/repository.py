@@ -2,6 +2,7 @@ import pandas as pd
 import warnings
 from config.database import get_db_connection
 
+# Ignora avisos internos do Pandas
 warnings.filterwarnings('ignore', category=UserWarning)
 
 class DashboardRepository:
@@ -10,6 +11,7 @@ class DashboardRepository:
             SELECT acao_realizada AS tipo_os, 
                    tipo_item, 
                    status_conclusao, 
+                   bairro, 
                    data_criacao AS data_dt, 
                    responsavel AS criado_por 
             FROM sigp.ordens_servico
