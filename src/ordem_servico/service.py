@@ -56,9 +56,9 @@ class OSService:
 
         # 1. Definição de Caminhos na Rede
         if pasta_escolhida == "URBMIDIA":
-            pasta_base = r"C:\Users\sousa\OneDrive\Documentos\pastasTeste\OS Paradas\SIGP\2026\URBMÍDIA - SIGP"
+            pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\URBMÍDIA - SIGP"
         else:
-            pasta_base = r"C:\Users\sousa\OneDrive\Documentos\pastasTeste\OS Paradas\SIGP\2026\PROXIMA PARADA - SIGP"
+            pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\PROXIMA PARADA - SIGP"
 
         if not os.path.exists(pasta_base):
             return False, f"A pasta de rede não está acessível no momento:\n{pasta_base}"
