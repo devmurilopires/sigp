@@ -56,7 +56,7 @@ class ParecerService:
         if not os.path.exists(modelo):
             return False, f"Modelo Word não encontrado em: {modelo}"
 
-        pasta_base = r"C:\Users\sousa\OneDrive\Documentos\pastasTeste\OS Paradas\PARECERES TECNICOS - SIGP\2026"
+        pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\PARECERES TECNICOS - SIGP\2026"
         pasta_saida = os.path.join(pasta_base, tipo_parecer.upper())
         
         nome_arquivo = f"Parecer_{numero:03d}_{ano}_{tipo_parecer}.docx"
