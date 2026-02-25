@@ -42,8 +42,8 @@ class RelatorioView(ctk.CTkFrame):
 
         if self.tipo_relatorio == "OS":
             # LINHA 0
-            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=90)
-            self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=90)
+            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=140)
+            self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=200)
             self._add_combo_grid(grid_frame, "Tipo OS", "tipo_os", ["Todos", "Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], 0, 2, width=130)
             self._add_combo_grid(grid_frame, "Pasta", "pasta", ["Todos", "URBMIDIA", "PROXIMA PARADA"], 0, 3, width=130)
             self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=130)
@@ -59,8 +59,8 @@ class RelatorioView(ctk.CTkFrame):
 
         else:
             # LINHA 0 (PARECER)
-            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=90)
-            self._add_filtro_grid(grid_frame, "Nº Par.", "numero_parecer", 0, 1, width=90)
+            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=140)
+            self._add_filtro_grid(grid_frame, "Nº Parecer", "numero_parecer", 0, 1, width=200)
             self._add_combo_grid(grid_frame, "Assunto", "assunto", self._assuntos_padrao, 0, 2, width=190)
             self._add_combo_grid(grid_frame, "Decisão", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 0, 3, width=220)
             self._add_combo_grid(grid_frame, "Solicitante", "solicitante", self._solicitantes_padrao, 0, 4, width=200, columnspan=2)
