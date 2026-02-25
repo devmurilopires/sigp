@@ -504,48 +504,44 @@ class DashboardView(ctk.CTkFrame):
             if not prod_total.empty and total_geral_sistema > 0:
                 labels = [textwrap.fill(str(nome), width=20) for nome in prod_total.index]
                 
-                # CORREÇÃO: Transforma os valores absolutos em Porcentagem ANTES de desenhar
                 prod_pct = (prod_total / total_geral_sistema) * 100
                 
-                # Agora o gráfico desenha as porcentagens no eixo X
                 bars = ax.barh(labels, prod_pct.values, color=COLOR_SECONDARY)
                 ax.invert_yaxis()
                 
                 max_val = max(prod_pct.values) if len(prod_pct)>0 else 1
                 
-                # Ajusta o limite do eixo X para dar espaço para o texto (agora em escala de porcentagem)
-                ax.set_xlim(0, max_val * 1.60) 
+                # 1. CORREÇÃO: Aumentei de 1.60 para 1.90 para empurrar o limite do gráfico e criar uma "área segura" à direita
+                ax.set_xlim(0, max_val * 1.90) 
                 
-                # MÁGICA DE BI: CÁLCULO DA MÉDIA IDEAL
                 num_tecnicos = len(prod_total)
                 media_docs = int(round(total_geral_sistema / num_tecnicos))
                 media_pct = (media_docs / total_geral_sistema) * 100
 
-                # CAIXA DE LEGENDA (Tamanho reduzido)
+                # 2. CORREÇÃO: Baixei o 'y' de 0.15 para 0.03 e o 'x' para 0.98. 
+                # Isso gruda a caixa perfeitamente no cantinho inferior direito!
                 texto_legenda = f"Média Ideal da Equipe:\n{media_docs} Docs/Téc\n({media_pct:.1f}%)"
-                # Diminuí a fonte (de 11 para 9) e o padding (de 0.6 para 0.4) para ficar mais elegante
-                ax.text(0.95, 0.15, texto_legenda, transform=ax.transAxes, ha='right', va='bottom',
+                
+                ax.text(0.98, 0.03, texto_legenda, transform=ax.transAxes, ha='right', va='bottom',
                         fontsize=9, fontweight='bold', color='#333333',
                         bbox=dict(facecolor='#F4F6F9', alpha=0.9, edgecolor=COLOR_PRIMARY, boxstyle='round,pad=0.4'))
 
                 for bar in bars:
-                    w = bar.get_width() # Agora o 'w' já é a porcentagem exata!
+                    w = bar.get_width() 
                     if w > 0: 
                         pct = w
                         diff = pct - media_pct
                         
-                        # DEFININDO O STATUS E A COR DO TEXTO
                         if diff > 0.1:
                             status = f"Acima (+{diff:.1f}%)"
-                            color_status = COLOR_PRIMARY # Verde
+                            color_status = COLOR_PRIMARY 
                         elif diff < -0.1:
                             status = f"Abaixo ({diff:.1f}%)"
-                            color_status = COLOR_SECONDARY # Laranja/Vermelho
+                            color_status = COLOR_SECONDARY 
                         else:
                             status = "Na Média"
-                            color_status = "#777777" # Cinza
+                            color_status = "#777777" 
                             
-                        # INSERINDO O TEXTO DINÂMICO
                         texto_final = f"{pct:.1f}%  |  {status}"
                         ax.text(w + (max_val*0.03), bar.get_y() + bar.get_height()/2, texto_final, 
                                 va='center', ha='left', fontweight='bold', color=color_status, fontsize=11)
