@@ -61,7 +61,7 @@ def iniciar_sistema(usuario_dados):
         ("Relatórios Parecer", COLOR_PRIMARY),
         ("Histórico", COLOR_PRIMARY),
     ]
-    if is_admin: menu_botoes.append(("Cadastro de Endereço", "#14A1D9"))
+    if is_admin: menu_botoes.append(("Cadastro de Endereço", "#F24822"))
 
     # CONTEÚDO
     frame_conteudo = ctk.CTkFrame(app, fg_color="#FFFFFF", corner_radius=15)
