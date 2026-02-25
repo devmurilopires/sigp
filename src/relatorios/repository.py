@@ -6,6 +6,7 @@ class RelatorioRepository:
     # =========================================================
     # BUSCAS GERAIS (TABELA) - Agora puxam o ID verdadeiro (PK)
     # =========================================================
+
     def buscar_ordens_servico(self, filtros):
         query = """
             SELECT id, numero, data_criacao, id_principal, ids_adicionais, 
@@ -26,6 +27,13 @@ class RelatorioRepository:
         if filtros.get('bairro'):
             query += " AND bairro ILIKE %s"
             params.append(f"%{filtros['bairro']}%")
+        
+        # --- NOVO FILTRO DE ENDEREÇO AQUI ---
+        if filtros.get('endereco'):
+            query += " AND endereco ILIKE %s"
+            params.append(f"%{filtros['endereco']}%")
+        # ------------------------------------
+            
         if filtros.get('concluida') and filtros['concluida'] != "Todos":
             query += " AND status_conclusao = %s"
             params.append(filtros['concluida'])
@@ -79,6 +87,13 @@ class RelatorioRepository:
         if filtros.get('tipo') and filtros['tipo'] != "Todos":
             query += " AND p.tipo_parecer = %s"
             params.append(filtros['tipo'].upper())
+            
+        # --- NOVO FILTRO DE ENDEREÇO AQUI ---
+        if filtros.get('endereco'):
+            query += " AND p.endereco ILIKE %s"
+            params.append(f"%{filtros['endereco']}%")
+        # ------------------------------------
+            
         if filtros.get('criado_por'):
             query += " AND u.nome_completo ILIKE %s"
             params.append(f"%{filtros['criado_por']}%")
