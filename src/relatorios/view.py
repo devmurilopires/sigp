@@ -41,7 +41,7 @@ class RelatorioView(ctk.CTkFrame):
         grid_frame.pack(padx=10, pady=8, fill="x") 
 
         if self.tipo_relatorio == "OS":
-            # LINHA 0: Troca do Bairro pelo Tipo de Item
+            # LINHA 0
             self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=90)
             self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=90)
             self._add_combo_grid(grid_frame, "Tipo OS", "tipo_os", ["Todos", "Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], 0, 2, width=130)
@@ -49,23 +49,25 @@ class RelatorioView(ctk.CTkFrame):
             self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=130)
             self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 0, 5, width=150)
 
-            # LINHA 1: Bairro desce para cá
-            self._add_filtro_grid(grid_frame, "Bairro", "bairro", 1, 0, width=190, columnspan=2)
+            # LINHA 1: Ajustado para caber o Endereço
+            self._add_filtro_grid(grid_frame, "Bairro", "bairro", 1, 0, width=140)
+            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) # <-- NOVO CAMPO
             self._add_filtro_grid(grid_frame, "Criado por", "criado_por", 1, 2, width=130)
             
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
             datas_frame.grid(row=1, column=3, columnspan=3, pady=(5,0), sticky="e", padx=5)
 
         else:
-            # LINHA 0 (PARECER): Troca do Processo pelo Assunto
+            # LINHA 0 (PARECER)
             self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=90)
             self._add_filtro_grid(grid_frame, "Nº Par.", "numero_parecer", 0, 1, width=90)
             self._add_combo_grid(grid_frame, "Assunto", "assunto", self._assuntos_padrao, 0, 2, width=190)
             self._add_combo_grid(grid_frame, "Decisão", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 0, 3, width=220)
             self._add_combo_grid(grid_frame, "Solicitante", "solicitante", self._solicitantes_padrao, 0, 4, width=200, columnspan=2)
 
-            # LINHA 1 (PARECER): Processo desce para cá
-            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 1, 0, width=190, columnspan=2)
+            # LINHA 1 (PARECER): Ajustado para caber o Endereço
+            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 1, 0, width=140)
+            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) # <-- NOVO CAMPO
             self._add_filtro_grid(grid_frame, "Criado por", "criado_por", 1, 2, width=190)
 
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
@@ -80,7 +82,6 @@ class RelatorioView(ctk.CTkFrame):
         self.data_fim = DateEntry(datas_frame, date_pattern="dd/mm/yyyy", width=12, font=("Arial", 10))
         self.data_fim.pack(side="left", padx=(2, 15))
         ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 13), width=90, height=32, command=self.acao_buscar).pack(side="left")
-
 
         # 3. INFO BAR
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
