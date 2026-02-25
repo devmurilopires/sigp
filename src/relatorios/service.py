@@ -64,7 +64,7 @@ class RelatorioService:
 
     def _reconstruir_caminho_os(self, pasta, numero, dt_criacao, ids_list):
         if not pasta or pasta == "-": return None
-        base = r"C:\Users\sousa\OneDrive\Documentos\pastasTeste\OS Paradas\SIGP\2026\URBMÍDIA - SIGP" if "URBMIDIA" in pasta.upper() else r"C:\Users\sousa\OneDrive\Documentos\pastasTeste\OS Paradas\SIGP\2026\PROXIMA PARADA - SIGP"
+        base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\URBMÍDIA - SIGP" if "URBMIDIA" in pasta.upper() else r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\PROXIMA PARADA - SIGP"
         if not dt_criacao: return None
         mes, ano = dt_criacao.strftime("%m"), dt_criacao.strftime("%Y")
         str_ids = "-".join(ids_list) if ids_list else "EMERGENCIA"
