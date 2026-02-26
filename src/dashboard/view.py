@@ -17,7 +17,7 @@ COLOR_PRIMARY = "#0F8C75"     # Verde Petróleo
 COLOR_SECONDARY = "#F24822"   # Laranja/Vermelho
 COLOR_TEXT = "#333333"
 COLOR_WARNING = "#F29C1F"     # Amarelo (Apenas para exceções)
-COLOR_AZUL = "#14A1D9"        # Azul Sistema (Para o SISGEP)
+
 
 class DashboardView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -296,7 +296,7 @@ class DashboardView(ctk.CTkFrame):
             ctk.CTkLabel(total_frame, text=texto_val, font=("Arial Black", 12), text_color=COLOR_PRIMARY, anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
 
     def _configurar_eixo(self, ax, titulo, grid_axis='y'):
-        ax.set_title(titulo, fontsize=13, fontweight='bold', color="#444", pad=15)
+        ax.set_title(titulo, fontsize=13, fontweight='bold', color=COLOR_TEXT, pad=15)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['left'].set_color('#DDDDDD')
@@ -407,7 +407,7 @@ class DashboardView(ctk.CTkFrame):
                     
                     formato_rotulo = lambda p: f'{int(round(p * sum(status_counts.values) / 100))}\n({p:.1f}%)'
                     ax.pie(status_counts.values, labels=status_counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
-                    ax.set_title("Status das Ordens de Serviço", fontsize=12, fontweight='bold', color="#444", pad=15)
+                    ax.set_title("Status das Ordens de Serviço", fontsize=12, fontweight='bold', color=COLOR_TEXT, pad=15)
             else:
                 self._configurar_eixo(ax, "Status das Ordens de Serviço")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
@@ -421,7 +421,7 @@ class DashboardView(ctk.CTkFrame):
                     
                     formato_rotulo = lambda p: f'{int(round(p * sum(taxa_counts.values) / 100))}\n({p:.1f}%)'
                     ax.pie(taxa_counts.values, labels=taxa_counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
-                    ax.set_title("Taxa de Aprovação (Pareceres)", fontsize=12, fontweight='bold', color="#444", pad=15)
+                    ax.set_title("Taxa de Aprovação (Pareceres)", fontsize=12, fontweight='bold', color=COLOR_TEXT, pad=15)
             else:
                 self._configurar_eixo(ax, "Taxa de Aprovação (Pareceres)")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
@@ -549,12 +549,12 @@ class DashboardView(ctk.CTkFrame):
             if not self.df_os_f.empty and 'origem' in self.df_os_f.columns:
                 counts = self.df_os_f['origem'].value_counts()
                 if not counts.empty:
-                    cores_map = {"SPU": COLOR_PRIMARY, "SISGEP": COLOR_AZUL}
-                    cores_grafico = [cores_map.get(str(x), "#999999") for x in counts.index]
+                    cores_map = {"SPU": COLOR_PRIMARY, "SISGEP": COLOR_SECONDARY}
+                    cores_grafico = [cores_map.get(str(x), COLOR_TEXT) for x in counts.index]
                     
                     formato_rotulo = lambda p: f'{int(round(p * sum(counts.values) / 100))}\n({p:.1f}%)'
                     ax.pie(counts.values, labels=counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
-                    ax.set_title("Origem da Demanda (OS)", fontsize=12, fontweight='bold', color="#444", pad=15)
+                    ax.set_title("Origem da Demanda (OS)", fontsize=12, fontweight='bold', color=COLOR_TEXT, pad=15)
             else:
                 self._configurar_eixo(ax, "Origem da Demanda (OS)")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
@@ -563,12 +563,12 @@ class DashboardView(ctk.CTkFrame):
             if not self.df_par_f.empty and 'origem' in self.df_par_f.columns:
                 counts = self.df_par_f['origem'].value_counts()
                 if not counts.empty:
-                    cores_map = {"SPU": COLOR_PRIMARY, "SISGEP": COLOR_AZUL}
-                    cores_grafico = [cores_map.get(str(x), "#999999") for x in counts.index]
+                    cores_map = {"SPU": COLOR_PRIMARY, "SISGEP": COLOR_SECONDARY}
+                    cores_grafico = [cores_map.get(str(x), COLOR_TEXT) for x in counts.index]
                     
                     formato_rotulo = lambda p: f'{int(round(p * sum(counts.values) / 100))}\n({p:.1f}%)'
                     ax.pie(counts.values, labels=counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
-                    ax.set_title("Origem da Demanda (Pareceres)", fontsize=12, fontweight='bold', color=COLOR_SECONDARY, pad=15)
+                    ax.set_title("Origem da Demanda (Pareceres)", fontsize=12, fontweight='bold', color=COLOR_TEXT, pad=15)
             else:
                 self._configurar_eixo(ax, "Origem da Demanda (Pareceres)")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
