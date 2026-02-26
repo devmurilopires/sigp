@@ -37,9 +37,13 @@ class OSView(ctk.CTkFrame):
         form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         form_frame.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1: Ação da OS e Tipo de Item (No topo, lado a lado)
+        # Linha 1: Origem, Ação da OS e Tipo de Item
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
+
+        # ---> NOVO CAMPO: Origem da Demanda
+        self.origem_var = self._criar_combobox(row1, "Origem da Demanda", width=150, values=["SPU", "SISGEP"], side="left")
+        self.origem_var.set("SPU")
 
         self.tipo_os_var = self._criar_combobox(row1, "Ação da OS", width=250, values=["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], side="left")
         self.tipo_os_var.set("Implantação")
@@ -199,6 +203,7 @@ class OSView(ctk.CTkFrame):
         
         modelo = "dados/modelo_etufor_urbmidia.docx" if self.pasta_escolhida_var.get() == "URBMIDIA" else "dados/modelo_etufor_prxparada.docx"
 
+        # ---> NOVO: Passando a Origem selecionada para o Service
         sucesso, mensagem = self.service.processar_criacao_os(
             descricoes_acumuladas=self.descricoes_acumuladas,
             pasta_escolhida=self.pasta_escolhida_var.get(),
@@ -206,7 +211,8 @@ class OSView(ctk.CTkFrame):
             tipo_os=self.tipo_os_var.get(),
             tipo_item=self.tipo_item_var.get(),
             form_dados=form_dados,
-            usuario_logado=self.usuario_logado
+            usuario_logado=self.usuario_logado,
+            origem_demanda=self.origem_var.get() 
         )
 
         if sucesso:
