@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.ticker import MaxNLocator
 import textwrap
 import io
 from datetime import datetime
@@ -16,6 +17,7 @@ COLOR_PRIMARY = "#0F8C75"     # Verde Petróleo
 COLOR_SECONDARY = "#F24822"   # Laranja/Vermelho
 COLOR_TEXT = "#333333"
 COLOR_WARNING = "#F29C1F"     # Amarelo (Apenas para exceções)
+COLOR_AZUL = "#14A1D9"        # Azul Sistema (Para o SISGEP)
 
 class DashboardView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -131,12 +133,10 @@ class DashboardView(ctk.CTkFrame):
             try:
                 df_resumo = self._gerar_dataframe_resumo()
                 
-                # Aumentei a "lona" do PDF (16x9) para dar mais espaço nas laterais
                 fig_table, ax_table = plt.subplots(figsize=(16, 9), facecolor='#FFFFFF')
                 fig_table.patch.set_facecolor('#FFFFFF')
                 ax_table.axis('off')
                 
-                # Uso do suptitle em vez de set_title para não encavalar na tabela
                 fig_table.suptitle("Resumo Consolidado de Intervenções (OS)", fontsize=22, fontweight='bold', color="#333333", y=0.92)
                 
                 cell_text = []
@@ -144,36 +144,30 @@ class DashboardView(ctk.CTkFrame):
                     formatted_row = [row[0]] + [str(int(x)) if x == int(x) else str(x) for x in row[1:]]
                     cell_text.append(formatted_row)
 
-                # Cria a tabela
                 table = ax_table.table(cellText=cell_text, colLabels=df_resumo.columns, cellLoc='center', loc='center')
                 table.auto_set_font_size(False)
-                table.set_fontsize(11) # Fonte um pouquinho mais ajustada
-                table.scale(1, 1.8) # Estica as linhas para ficarem mais altas
+                table.set_fontsize(11) 
+                table.scale(1, 1.8) 
                 
-                # MÁGICA DO ALINHAMENTO E LARGURA DAS COLUNAS
                 for (row, col), cell in table.get_celld().items():
-                    # Cores do Cabeçalho e Rodapé
                     if row == 0: 
                         cell.set_text_props(weight='bold', color='white')
-                        cell.set_facecolor(COLOR_PRIMARY) # Cor verde institucional
+                        cell.set_facecolor(COLOR_PRIMARY) 
                     elif row == len(df_resumo): 
                         cell.set_text_props(weight='bold')
                         cell.set_facecolor('#E0E4E8')
                     
-                    # Largura Personalizada
                     if col == 0: 
                         cell._loc = 'left' 
-                        cell.set_width(0.38) # Aumentei de 0.35 para 0.38 para garantir o texto
+                        cell.set_width(0.38) 
                     else:
-                        cell.set_width(0.045) # Afinei um pouquinho os meses para compensar
+                        cell.set_width(0.045) 
 
-                # Trava a área de desenho (O PRIMEIRO 0.05 DÁ UMA MARGEM À ESQUERDA PARA NÃO CORTAR)
                 fig_table.tight_layout(rect=[0.05, 0.05, 0.98, 0.88])
 
-                # SALVANDO MULTIPÁGINAS
                 with PdfPages(filepath) as pdf:
-                    pdf.savefig(fig_table, bbox_inches='tight', pad_inches=0.3) # Salva Página 1 (Tabela)
-                    pdf.savefig(self.fig, bbox_inches='tight', pad_inches=0.3)  # Salva Página 2 (Gráficos)
+                    pdf.savefig(fig_table, bbox_inches='tight', pad_inches=0.3) 
+                    pdf.savefig(self.fig, bbox_inches='tight', pad_inches=0.3)  
                     
                 plt.close(fig_table)
                 messagebox.showinfo("Sucesso", "Relatório Executivo PDF gerado com sucesso!\n\nPágina 1: Tabela Resumo\nPágina 2: Gráficos Analíticos")
@@ -340,7 +334,7 @@ class DashboardView(ctk.CTkFrame):
         # 3. GRÁFICOS
         for w in self.frame_graficos.winfo_children(): w.destroy()
         
-        self.fig, axs = plt.subplots(6, 2, figsize=(14, 34), facecolor=COLOR_WHITE)
+        self.fig, axs = plt.subplots(7, 2, figsize=(14, 40), facecolor=COLOR_WHITE)
         self.fig.patch.set_facecolor(COLOR_WHITE)
 
         if self.df_os_f.empty and self.df_par_f.empty:
@@ -349,7 +343,7 @@ class DashboardView(ctk.CTkFrame):
             meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
             meses_en = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-            # LINHA 1
+            # LINHA 1 - Evolução Mensal
             ax = axs[0, 0]
             if not self.df_os_f.empty:
                 counts = self.df_os_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0)
@@ -374,13 +368,14 @@ class DashboardView(ctk.CTkFrame):
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, f"Evolução de Pareceres  ({ano_sel})", grid_axis='y')
 
-            # LINHA 2
+            # LINHA 2 - Bairros e Solicitantes
             ax = axs[1, 0]
             if not self.df_os_f.empty and 'bairro' in self.df_os_f.columns:
                 counts = self.df_os_f['bairro'].replace("", "Não Informado").fillna("Não Informado").value_counts().head(8)
                 labels = [textwrap.fill(str(nome), width=25) for nome in counts.index]
                 bars = ax.barh(labels, counts.values, color=COLOR_PRIMARY)
                 ax.invert_yaxis()
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True)) 
                 max_val = max(counts.values) if len(counts)>0 else 1
                 ax.set_xlim(0, max_val * 1.2)
                 for bar in bars:
@@ -394,6 +389,7 @@ class DashboardView(ctk.CTkFrame):
                 labels = [textwrap.fill(str(nome), width=25) for nome in counts.index]
                 bars = ax.barh(labels, counts.values, color=COLOR_SECONDARY)
                 ax.invert_yaxis()
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True)) 
                 max_val = max(counts.values) if len(counts)>0 else 1
                 ax.set_xlim(0, max_val * 1.25) 
                 for bar in bars:
@@ -401,14 +397,16 @@ class DashboardView(ctk.CTkFrame):
                     if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, "Top 8 Solicitantes (Pareceres)", grid_axis='x')
 
-            # LINHA 3
+            # LINHA 3 - Status (ATUALIZADO COM NÚMERO E PORCENTAGEM)
             ax = axs[2, 0]
             if not self.df_os_f.empty and 'status_conclusao' in self.df_os_f.columns:
                 status_counts = self.df_os_f['status_conclusao'].fillna("NÃO").value_counts()
                 if not status_counts.empty:
                     cores_map = {"SIM": COLOR_PRIMARY, "NÃO": COLOR_SECONDARY, "NÃO AUTORIZADA": COLOR_WARNING}
                     cores_grafico = [cores_map.get(str(x).upper(), "#999999") for x in status_counts.index]
-                    ax.pie(status_counts.values, labels=status_counts.index, autopct='%1.1f%%', startangle=90, colors=cores_grafico, textprops={'fontsize': 11, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
+                    
+                    formato_rotulo = lambda p: f'{int(round(p * sum(status_counts.values) / 100))}\n({p:.1f}%)'
+                    ax.pie(status_counts.values, labels=status_counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
                     ax.set_title("Status das Ordens de Serviço", fontsize=12, fontweight='bold', color="#444", pad=15)
             else:
                 self._configurar_eixo(ax, "Status das Ordens de Serviço")
@@ -420,13 +418,15 @@ class DashboardView(ctk.CTkFrame):
                 if not taxa_counts.empty:
                     cores_map = {"DEFERIDO": COLOR_PRIMARY, "INDEFERIDO": COLOR_SECONDARY}
                     cores_grafico = [cores_map.get(str(x), "#999999") for x in taxa_counts.index]
-                    ax.pie(taxa_counts.values, labels=taxa_counts.index, autopct='%1.1f%%', startangle=90, colors=cores_grafico, textprops={'fontsize': 11, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
+                    
+                    formato_rotulo = lambda p: f'{int(round(p * sum(taxa_counts.values) / 100))}\n({p:.1f}%)'
+                    ax.pie(taxa_counts.values, labels=taxa_counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
                     ax.set_title("Taxa de Aprovação (Pareceres)", fontsize=12, fontweight='bold', color="#444", pad=15)
             else:
                 self._configurar_eixo(ax, "Taxa de Aprovação (Pareceres)")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
 
-            # LINHA 4
+            # LINHA 4 - Natureza e Tipo
             ax = axs[3, 0]
             if not self.df_os_f.empty and 'tipo_os' in self.df_os_f.columns:
                 counts = self.df_os_f['tipo_os'].str.upper().value_counts().head(5)
@@ -455,13 +455,14 @@ class DashboardView(ctk.CTkFrame):
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, "Tipos de Itens Mais Demandados (OS)", grid_axis='y')
 
-            # LINHA 5
+            # LINHA 5 - Produção Individual
             ax = axs[4, 0]
             if not self.df_os_f.empty and 'criado_por' in self.df_os_f.columns:
                 counts = self.df_os_f['criado_por'].value_counts().head(8)
                 labels = [textwrap.fill(str(nome), width=20) for nome in counts.index]
                 bars = ax.barh(labels, counts.values, color=COLOR_PRIMARY)
                 ax.invert_yaxis()
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True)) 
                 max_val = max(counts.values) if len(counts)>0 else 1
                 ax.set_xlim(0, max_val * 1.25)
                 for bar in bars:
@@ -475,6 +476,7 @@ class DashboardView(ctk.CTkFrame):
                 labels = [textwrap.fill(str(nome), width=20) for nome in counts.index]
                 bars = ax.barh(labels, counts.values, color=COLOR_SECONDARY)
                 ax.invert_yaxis()
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True)) 
                 max_val = max(counts.values) if len(counts)>0 else 1
                 ax.set_xlim(0, max_val * 1.25)
                 for bar in bars:
@@ -482,7 +484,7 @@ class DashboardView(ctk.CTkFrame):
                     if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, "Quantidade de Pareceres por Técnico", grid_axis='x')
 
-            # LINHA 6
+            # LINHA 6 - Produtividade
             ax = axs[5, 0]
             s1 = self.df_os_f['criado_por'].value_counts() if not self.df_os_f.empty else pd.Series(dtype=int)
             s2 = self.df_par_f['criado_por'].value_counts() if not self.df_par_f.empty else pd.Series(dtype=int)
@@ -493,6 +495,7 @@ class DashboardView(ctk.CTkFrame):
                 labels = [textwrap.fill(str(nome), width=20) for nome in prod_total.index]
                 bars = ax.barh(labels, prod_total.values, color=COLOR_PRIMARY)
                 ax.invert_yaxis()
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True)) 
                 max_val = max(prod_total.values) if len(prod_total)>0 else 1
                 ax.set_xlim(0, max_val * 1.25)
                 for bar in bars:
@@ -503,25 +506,18 @@ class DashboardView(ctk.CTkFrame):
             ax = axs[5, 1]
             if not prod_total.empty and total_geral_sistema > 0:
                 labels = [textwrap.fill(str(nome), width=20) for nome in prod_total.index]
-                
                 prod_pct = (prod_total / total_geral_sistema) * 100
-                
                 bars = ax.barh(labels, prod_pct.values, color=COLOR_SECONDARY)
                 ax.invert_yaxis()
                 
                 max_val = max(prod_pct.values) if len(prod_pct)>0 else 1
-                
-                # 1. CORREÇÃO: Aumentei de 1.60 para 1.90 para empurrar o limite do gráfico e criar uma "área segura" à direita
                 ax.set_xlim(0, max_val * 1.90) 
                 
                 num_tecnicos = len(prod_total)
                 media_docs = int(round(total_geral_sistema / num_tecnicos))
                 media_pct = (media_docs / total_geral_sistema) * 100
 
-                # 2. CORREÇÃO: Baixei o 'y' de 0.15 para 0.03 e o 'x' para 0.98. 
-                # Isso gruda a caixa perfeitamente no cantinho inferior direito!
                 texto_legenda = f"Média Ideal da Equipe:\n{media_docs} Docs/Téc\n({media_pct:.1f}%)"
-                
                 ax.text(0.98, 0.03, texto_legenda, transform=ax.transAxes, ha='right', va='bottom',
                         fontsize=9, fontweight='bold', color='#333333',
                         bbox=dict(facecolor='#F4F6F9', alpha=0.9, edgecolor=COLOR_PRIMARY, boxstyle='round,pad=0.4'))
@@ -547,6 +543,35 @@ class DashboardView(ctk.CTkFrame):
                                 va='center', ha='left', fontweight='bold', color=color_status, fontsize=11)
             
             self._configurar_eixo(ax, "Produtividade Relativa vs Média da Equipe (%)", grid_axis='x')
+
+            # LINHA 7 - ORIGEM DA DEMANDA (ATUALIZADO COM NÚMERO E PORCENTAGEM)
+            ax = axs[6, 0]
+            if not self.df_os_f.empty and 'origem' in self.df_os_f.columns:
+                counts = self.df_os_f['origem'].value_counts()
+                if not counts.empty:
+                    cores_map = {"SPU": COLOR_PRIMARY, "SISGEP": COLOR_AZUL}
+                    cores_grafico = [cores_map.get(str(x), "#999999") for x in counts.index]
+                    
+                    formato_rotulo = lambda p: f'{int(round(p * sum(counts.values) / 100))}\n({p:.1f}%)'
+                    ax.pie(counts.values, labels=counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
+                    ax.set_title("Origem da Demanda (OS)", fontsize=12, fontweight='bold', color="#444", pad=15)
+            else:
+                self._configurar_eixo(ax, "Origem da Demanda (OS)")
+                ax.text(0.5, 0.5, "Sem dados", ha='center')
+
+            ax = axs[6, 1]
+            if not self.df_par_f.empty and 'origem' in self.df_par_f.columns:
+                counts = self.df_par_f['origem'].value_counts()
+                if not counts.empty:
+                    cores_map = {"SPU": COLOR_PRIMARY, "SISGEP": COLOR_AZUL}
+                    cores_grafico = [cores_map.get(str(x), "#999999") for x in counts.index]
+                    
+                    formato_rotulo = lambda p: f'{int(round(p * sum(counts.values) / 100))}\n({p:.1f}%)'
+                    ax.pie(counts.values, labels=counts.index, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 10, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
+                    ax.set_title("Origem da Demanda (Pareceres)", fontsize=12, fontweight='bold', color=COLOR_SECONDARY, pad=15)
+            else:
+                self._configurar_eixo(ax, "Origem da Demanda (Pareceres)")
+                ax.text(0.5, 0.5, "Sem dados", ha='center')
 
         self.fig.tight_layout(pad=4.0, h_pad=5.0)
 
