@@ -54,6 +54,7 @@ class RelatorioService:
     def _formatar_dados_parecer(self, dados_brutos):
         dados_formatados = []
         for linha in dados_brutos:
+            # O Parecer já salva o caminho completo no banco de dados, então não precisa reconstruir!
             (id_banco, num, tipo, proc, assun, ids, solic, dt_criacao, resp, caminho) = linha
             dt_str = dt_criacao.strftime("%d/%m/%Y") if dt_criacao else "-"
             dados_formatados.append([
@@ -62,11 +63,19 @@ class RelatorioService:
             ])
         return dados_formatados
 
+    # ---> NOVA LÓGICA DE ROTAS INTELIGENTES <---
     def _reconstruir_caminho_os(self, pasta, numero, dt_criacao, ids_list):
         if not pasta or pasta == "-": return None
-        base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\URBMÍDIA - SIGP" if "URBMIDIA" in pasta.upper() else r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\PROXIMA PARADA - SIGP"
         if not dt_criacao: return None
+        
         mes, ano = dt_criacao.strftime("%m"), dt_criacao.strftime("%Y")
+        
+        # Puxa o ano que a OS foi criada e encaixa na nova árvore de diretórios do servidor
+        if "URBMIDIA" in pasta.upper():
+            base = rf"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR\SIGP\{ano}\ORDENS DE SERVICO\URBMIDIA"
+        else:
+            base = rf"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR\SIGP\{ano}\ORDENS DE SERVICO\PROXIMA PARADA"
+            
         str_ids = "-".join(ids_list) if ids_list else "EMERGENCIA"
         return os.path.join(base, f"{str(numero).zfill(3)}-{mes}-{ano}-ID{str_ids}", f"O.S {str(numero).zfill(3)}-{ano}-ID{str_ids}.docx")
 
