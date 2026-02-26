@@ -13,7 +13,8 @@ class DashboardRepository:
                    status_conclusao, 
                    bairro, 
                    data_criacao AS data_dt, 
-                   responsavel AS criado_por 
+                   responsavel AS criado_por,
+                   origem_demanda AS origem
             FROM sigp.ordens_servico
             WHERE data_criacao IS NOT NULL
         """
@@ -30,7 +31,8 @@ class DashboardRepository:
             SELECT p.tipo_parecer AS tipo, 
                    u.nome_completo AS criado_por, 
                    b.created_at AS data_dt, 
-                   p.solicitante 
+                   p.solicitante,
+                   p.origem_demanda AS origem
             FROM sigp.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
