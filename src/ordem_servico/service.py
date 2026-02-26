@@ -49,6 +49,12 @@ class OSService:
     # ORQUESTRAÇÃO PRINCIPAL (GERAÇÃO SEGURA - DB PRIMEIRO)
     # =========================================================
     def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
+        
+        # ---> CORREÇÃO DE SEGURANÇA (O "Guarda de Trânsito") <---
+        # Força o nome oficial com espaço, mesmo que a tela mande junto
+        if str(pasta_escolhida).replace(" ", "").upper() == "PROXIMAPARADA":
+            pasta_escolhida = "PROXIMA PARADA"
+
         if not descricoes_acumuladas:
             return False, "Adicione pelo menos um item (descrição) na lista antes de gerar a OS."
 
@@ -126,7 +132,6 @@ class OSService:
         destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
         try:
-            # ---> O MÁGICO os.makedirs AQUI VAI CRIAR A PASTA DO ANO CASO NÃO EXISTA
             os.makedirs(caminho_pasta, exist_ok=True)
             caminho_modelo = resource_path(modelo_escolhido)
             self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas)
