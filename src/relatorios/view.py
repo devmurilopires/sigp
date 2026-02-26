@@ -45,7 +45,7 @@ class RelatorioView(ctk.CTkFrame):
             self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=200)
             self._add_combo_grid(grid_frame, "Tipo OS", "tipo_os", ["Todos", "Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], 0, 2, width=130)
             self._add_combo_grid(grid_frame, "Pasta", "pasta", ["Todos", "URBMIDIA", "PROXIMA PARADA"], 0, 3, width=130)
-            self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=130)
+            self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=250)
             self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 0, 5, width=150)
 
             # LINHA 1 (Adicionado ORIGEM aqui)
@@ -69,7 +69,7 @@ class RelatorioView(ctk.CTkFrame):
             self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 1, 0, width=140)
             self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) 
             self._add_filtro_grid(grid_frame, "Criado por", "criado_por", 1, 2, width=190)
-            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=130) # <--- NOVO
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=220) # <--- NOVO
 
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
             datas_frame.grid(row=1, column=4, columnspan=2, pady=(5,0), sticky="e", padx=5)
