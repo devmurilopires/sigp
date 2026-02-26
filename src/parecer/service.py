@@ -58,7 +58,7 @@ class ParecerService:
             return False, f"Modelo Word não encontrado em: {modelo}"
 
         # ---> NOVO CAMINHO DINÂMICO E INTELIGENTE DA REDE <---
-        raiz_rede = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR"
+        raiz_rede = r"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR"
         
         # Só bloqueia se o Servidor/Rede estiver fora do ar.
         if not os.path.exists(raiz_rede):

@@ -80,9 +80,9 @@ class RelatorioService:
         if not dt_criacao: return None
         mes, ano = dt_criacao.strftime("%m"), dt_criacao.strftime("%Y")
         if "URBMIDIA" in pasta.upper():
-            base = rf"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\SIGP\{ano}\ORDENS DE SERVICO\URBMIDIA"
+            base = rf"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR\SIGP\{ano}\ORDENS DE SERVICO\URBMIDIA"
         else:
-            base = rf"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\SIGP\{ano}\ORDENS DE SERVICO\PROXIMA PARADA"
+            base = rf"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR\SIGP\{ano}\ORDENS DE SERVICO\PROXIMA PARADA"
         str_ids = "-".join(ids_list) if ids_list else "EMERGENCIA"
         return os.path.join(base, f"{str(numero).zfill(3)}-{mes}-{ano}-ID{str_ids}", f"O.S {str(numero).zfill(3)}-{ano}-ID{str_ids}.docx")
 
