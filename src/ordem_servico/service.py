@@ -50,7 +50,6 @@ class OSService:
     # =========================================================
     def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
         
-        # ---> CORREÇÃO DE SEGURANÇA (O "Guarda de Trânsito") <---
         # Força o nome oficial com espaço, mesmo que a tela mande junto
         if str(pasta_escolhida).replace(" ", "").upper() == "PROXIMAPARADA":
             pasta_escolhida = "PROXIMA PARADA"
