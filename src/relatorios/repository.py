@@ -4,20 +4,26 @@ from config.database import get_db_connection
 
 class RelatorioRepository:
     # =========================================================
-    # BUSCAS GERAIS (TABELA) - Agora puxam o ID verdadeiro (PK)
+    # BUSCAS GERAIS (TABELA) - Nomes de Colunas Corrigidos + Filtro Origem
     # =========================================================
 
     def buscar_ordens_servico(self, filtros):
         query = """
-            SELECT id, numero, data_criacao, id_principal, ids_adicionais, 
-                   acao_realizada, tipo_item, endereco, bairro, 
-                   status_conclusao, data_conclusao, pasta_rede, responsavel
+            SELECT id, numero, data_criacao, ponto_principal_id, pontos_adicionais, 
+                   acao_realizada, tipo_item, logradouro_completo, bairro, 
+                   status_conclusao, data_conclusao, modelo_documento, responsavel
             FROM sigp.ordens_servico WHERE 1=1
         """
         params = []
         if filtros.get('id'):
-            query += " AND (id_principal ILIKE %s OR ids_adicionais ILIKE %s)"
+            query += " AND (ponto_principal_id ILIKE %s OR pontos_adicionais ILIKE %s)"
             params.extend([f"%{filtros['id']}%", f"%{filtros['id']}%"])
+        
+        # --- NOVO FILTRO DE ORIGEM ---
+        if filtros.get('origem') and filtros['origem'] != "Todos":
+            query += " AND origem_demanda = %s"
+            params.append(filtros['origem'])
+            
         if filtros.get('tipo_os') and filtros['tipo_os'] != "Todos":
             query += " AND acao_realizada ILIKE %s"
             params.append(f"%{filtros['tipo_os']}%")
@@ -27,18 +33,14 @@ class RelatorioRepository:
         if filtros.get('bairro'):
             query += " AND bairro ILIKE %s"
             params.append(f"%{filtros['bairro']}%")
-        
-        # --- NOVO FILTRO DE ENDEREÇO AQUI ---
         if filtros.get('endereco'):
-            query += " AND endereco ILIKE %s"
+            query += " AND logradouro_completo ILIKE %s"
             params.append(f"%{filtros['endereco']}%")
-        # ------------------------------------
-            
         if filtros.get('concluida') and filtros['concluida'] != "Todos":
             query += " AND status_conclusao = %s"
             params.append(filtros['concluida'])
         if filtros.get('pasta') and filtros['pasta'] != "Todos":
-            query += " AND pasta_rede = %s"
+            query += " AND modelo_documento = %s"
             params.append(filtros['pasta'])
         if filtros.get('numero_os'):
             query += " AND numero = %s"
@@ -63,12 +65,18 @@ class RelatorioRepository:
     def buscar_pareceres(self, filtros):
         query = """
             SELECT p.id, b.numero_parecer_ano, p.tipo_parecer, p.processo, p.assunto, 
-                   p.ids_associados, p.solicitante, b.created_at, u.nome_completo, p.caminho_arquivo
+                   p.ids_pontos, p.solicitante, b.created_at, u.nome_completo, p.caminho_arquivo_docx
             FROM sigp.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id WHERE 1=1
         """
         params = []
+        
+        # --- NOVO FILTRO DE ORIGEM ---
+        if filtros.get('origem') and filtros['origem'] != "Todos":
+            query += " AND p.origem_demanda = %s"
+            params.append(filtros['origem'])
+            
         if filtros.get('solicitante') and filtros['solicitante'] != "Todos":
             query += " AND p.solicitante = %s"
             params.append(filtros['solicitante'])
@@ -82,18 +90,14 @@ class RelatorioRepository:
             query += " AND b.numero_parecer_ano = %s"
             params.append(int(filtros['numero_parecer']))
         if filtros.get('id'):
-            query += " AND p.ids_associados ILIKE %s"
+            query += " AND p.ids_pontos ILIKE %s"
             params.append(f"%{filtros['id']}%")
         if filtros.get('tipo') and filtros['tipo'] != "Todos":
             query += " AND p.tipo_parecer = %s"
             params.append(filtros['tipo'].upper())
-            
-        # --- NOVO FILTRO DE ENDEREÇO AQUI ---
         if filtros.get('endereco'):
-            query += " AND p.endereco ILIKE %s"
+            query += " AND p.endereco_vistoria ILIKE %s"
             params.append(f"%{filtros['endereco']}%")
-        # ------------------------------------
-            
         if filtros.get('criado_por'):
             query += " AND u.nome_completo ILIKE %s"
             params.append(f"%{filtros['criado_por']}%")
@@ -112,13 +116,13 @@ class RelatorioRepository:
             return []
 
     # =========================================================
-    # BUSCA DE TODOS OS DETALHES (POPUP) - Usa o ID invisível
+    # BUSCA DE TODOS OS DETALHES (POPUP)
     # =========================================================
     def buscar_detalhes_os(self, id_banco):
         query = """
-            SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), id_principal, ids_adicionais, 
-                   acao_realizada, tipo_item, endereco, bairro, complemento,
-                   descricoes, responsavel, pasta_rede, status_conclusao
+            SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), origem_demanda, ponto_principal_id, pontos_adicionais, 
+                   acao_realizada, tipo_item, logradouro_completo, bairro, complemento,
+                   descricao_tecnica, responsavel, modelo_documento, status_conclusao
             FROM sigp.ordens_servico WHERE id = %s
         """
         try:
@@ -127,7 +131,7 @@ class RelatorioRepository:
                     cursor.execute(query, (id_banco,))
                     row = cursor.fetchone()
                     if row:
-                        colunas = ["Nº OS", "Data Criação", "ID Principal", "IDs Adicionais", 
+                        colunas = ["Nº OS", "Data Criação", "Origem", "ID Principal", "IDs Adicionais", 
                                    "Ação Realizada", "Tipo Item", "Endereço", "Bairro", "Complemento",
                                    "Descrição (Croqui)", "Criado por", "Modelo", "Status Conclusão"]
                         return dict(zip(colunas, row))
@@ -137,9 +141,9 @@ class RelatorioRepository:
 
     def buscar_detalhes_parecer(self, id_banco):
         query = """
-            SELECT b.numero_parecer_ano, TO_CHAR(b.created_at, 'DD/MM/YYYY'), p.tipo_parecer, 
-                   p.processo, p.assunto, p.solicitante, p.ids_associados, p.tipo_execucao, 
-                   p.item, p.endereco, p.quantidade, p.motivo_indeferimento, u.nome_completo
+            SELECT b.numero_parecer_ano, TO_CHAR(b.created_at, 'DD/MM/YYYY'), p.origem_demanda, p.tipo_parecer, 
+                   p.processo, p.assunto, p.solicitante, p.ids_pontos, p.tipo_execucao, 
+                   p.item, p.endereco_vistoria, p.quantidade, p.motivo_indeferimento, u.nome_completo
             FROM sigp.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
@@ -151,7 +155,7 @@ class RelatorioRepository:
                     cursor.execute(query, (id_banco,))
                     row = cursor.fetchone()
                     if row:
-                        colunas = ["Nº Parecer", "Data Criação", "Decisão (DEFERIDO/INDEFERIDO)", "Processo", 
+                        colunas = ["Nº Parecer", "Data Criação", "Origem", "Decisão (DEFERIDO/INDEFERIDO)", "Processo", 
                                    "Assunto", "Solicitante", "IDs dos Pontos", "Ação Recomendada", 
                                    "Item", "Endereço", "Quantidade", "Motivo (Indeferido)", "Criado por"]
                         return dict(zip(colunas, row))
@@ -160,14 +164,14 @@ class RelatorioRepository:
         return None
 
     # =========================================================
-    # ATUALIZAÇÃO NO BANCO - Atualiza usando o ID verdadeiro
+    # ATUALIZAÇÃO NO BANCO
     # =========================================================
     def atualizar_os(self, id_banco, dados):
         query = """
             UPDATE sigp.ordens_servico 
-            SET id_principal=%s, ids_adicionais=%s, acao_realizada=%s, 
-                tipo_item=%s, endereco=%s, bairro=%s, complemento=%s,
-                descricoes=%s, status_conclusao=%s, 
+            SET origem_demanda=%s, ponto_principal_id=%s, pontos_adicionais=%s, acao_realizada=%s, 
+                tipo_item=%s, logradouro_completo=%s, bairro=%s, complemento=%s,
+                descricao_tecnica=%s, status_conclusao=%s, 
                 data_conclusao = CASE 
                     WHEN %s IN ('SIM', 'NÃO AUTORIZADA') THEN COALESCE(data_conclusao, CURRENT_TIMESTAMP)
                     ELSE NULL 
@@ -177,12 +181,13 @@ class RelatorioRepository:
         status = dados.get("Status Conclusão", "NÃO").strip().upper()
         acao_up = str(dados.get("Ação Realizada", "")).strip().upper()
         item_up = str(dados.get("Tipo Item", "")).strip().upper()
+        origem_up = str(dados.get("Origem", "SPU")).strip().upper()
         
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(query, (
-                        dados.get("ID Principal"), dados.get("IDs Adicionais"), acao_up, 
+                        origem_up, dados.get("ID Principal"), dados.get("IDs Adicionais"), acao_up, 
                         item_up, dados.get("Endereço"), dados.get("Bairro"), 
                         dados.get("Complemento"), dados.get("Descrição (Croqui)"), status, status, id_banco
                     ))
@@ -193,16 +198,17 @@ class RelatorioRepository:
     def atualizar_parecer(self, id_banco, dados):
         query = """
             UPDATE sigp.pareceres 
-            SET tipo_parecer=%s, processo=%s, assunto=%s, solicitante=%s, 
-                ids_associados=%s, tipo_execucao=%s, item=%s, endereco=%s,
+            SET origem_demanda=%s, tipo_parecer=%s, processo=%s, assunto=%s, solicitante=%s, 
+                ids_pontos=%s, tipo_execucao=%s, item=%s, endereco_vistoria=%s,
                 quantidade=%s, motivo_indeferimento=%s
             WHERE id = %s
         """
+        origem_up = str(dados.get("Origem", "SPU")).strip().upper()
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(query, (
-                        dados.get("Decisão (DEFERIDO/INDEFERIDO)"), dados.get("Processo"), dados.get("Assunto"), 
+                        origem_up, dados.get("Decisão (DEFERIDO/INDEFERIDO)"), dados.get("Processo"), dados.get("Assunto"), 
                         dados.get("Solicitante"), dados.get("IDs dos Pontos"), dados.get("Ação Recomendada"), 
                         dados.get("Item"), dados.get("Endereço"), dados.get("Quantidade"), 
                         dados.get("Motivo (Indeferido)"), id_banco
@@ -215,7 +221,7 @@ class RelatorioRepository:
     # DADOS PARA EXCLUSÃO E CAMINHOS
     # =========================================================
     def obter_dados_para_caminho_os(self, id_banco):
-        query = "SELECT numero, data_criacao, id_principal, ids_adicionais, pasta_rede FROM sigp.ordens_servico WHERE id = %s"
+        query = "SELECT numero, data_criacao, ponto_principal_id, pontos_adicionais, modelo_documento FROM sigp.ordens_servico WHERE id = %s"
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -224,7 +230,7 @@ class RelatorioRepository:
         except: return None
 
     def obter_caminho_parecer(self, id_banco):
-        query = "SELECT caminho_arquivo FROM sigp.pareceres WHERE id = %s"
+        query = "SELECT caminho_arquivo_docx FROM sigp.pareceres WHERE id = %s"
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -234,7 +240,7 @@ class RelatorioRepository:
         except: return None
 
     # =========================================================
-    # EXCLUSÃO SEGURA COM LOG DE AUDITORIA (LIXEIRA)
+    # EXCLUSÃO SEGURA
     # =========================================================
     def excluir_e_logar_os(self, id_banco, dados_json, caminho_original, motivo, excluido_por):
         try:
