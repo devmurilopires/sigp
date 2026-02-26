@@ -17,6 +17,7 @@ class ParecerService:
             return False, "Adicione ao menos um ID antes de gerar o parecer."
 
         # Extrai os dados do formulário
+        origem = dados_form['origem']
         tipo_parecer = dados_form['tipo']
         processo = dados_form['processo'] or "-"
         assunto = dados_form['assunto'] or "-"
@@ -56,34 +57,40 @@ class ParecerService:
         if not os.path.exists(modelo):
             return False, f"Modelo Word não encontrado em: {modelo}"
 
-        pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\PARECERES TECNICOS - SIGP\2026"
+        # ---> NOVO CAMINHO DINÂMICO E INTELIGENTE DA REDE <---
+        raiz_rede = r"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR"
+        
+        # Só bloqueia se o Servidor/Rede estiver fora do ar.
+        if not os.path.exists(raiz_rede):
+            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{raiz_rede}"
+
+        pasta_base = rf"{raiz_rede}\SIGP\{ano}\PARECERES TECNICOS"
         pasta_saida = os.path.join(pasta_base, tipo_parecer.upper())
         
         nome_arquivo = f"Parecer_{numero:03d}_{ano}_{tipo_parecer}.docx"
         caminho_arquivo = os.path.join(pasta_saida, nome_arquivo)
 
-        # Prepara os dados para o banco
+        # Prepara os dados para o banco (Com a ORIGEM no final)
         dados_banco = (
             numero, ano, data_atual.date(), tipo_parecer.upper(), processo, 
             assunto, ids_joined, tipo_exec, item, endereco, 
             solicitante, motivo if tipo_parecer == "Indeferido" else None, 
-            quantidade, caminho_arquivo, usuario_logado
+            quantidade, caminho_arquivo, usuario_logado, origem 
         )
 
         # =========================================================================
         # 4. GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
         # =========================================================================
         try:
-            # Tenta registrar no banco antes de criar qualquer arquivo físico!
             self.repo.salvar_parecer(dados_banco)
         except Exception as e:
-            # Se der erro aqui, a função para e o Word NÃO É CRIADO na pasta.
             return False, f"Erro Crítico! O Parecer NÃO foi gerado pois houve falha no Banco de Dados:\n{str(e)}"
 
         # =========================================================================
         # 5. SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
         # =========================================================================
         try:
+            # ---> O MÁGICO os.makedirs AQUI VAI CRIAR A PASTA DO ANO CASO NÃO EXISTA
             os.makedirs(pasta_saida, exist_ok=True)
             self._gerar_documento_word(modelo, caminho_arquivo, {
                 "{{NUM_PARECER}}": f"{numero:03d}",
@@ -99,10 +106,9 @@ class ParecerService:
                 "{{QUANTIDADE}}": quantidade
             })
             
-            return True, f"Parecer {numero:03d}/{ano} criado e registrado com sucesso!\nSalvo em: {nome_arquivo}"
+            return True, f"Parecer {numero:03d}/{ano} criado e registrado com sucesso!\nSalvo em:\n{caminho_arquivo}"
             
         except Exception as e:
-            # Em casos raros de falha no disco (ex: sem permissão ou disco cheio), avisa o usuário.
             return False, f"Atenção: O Parecer foi registrado no banco, mas houve falha ao gerar o documento Word:\n{e}"
 
     # =========================================================

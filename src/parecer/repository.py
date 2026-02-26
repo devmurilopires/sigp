@@ -27,7 +27,7 @@ class ParecerRepository:
         # Desempacota os dados exatos que o seu Service manda
         (numero, ano, data_criacao, tipo_parecer, processo, 
          assunto, ids_joined, tipo_exec, item, endereco, 
-         solicitante, motivo, quantidade, caminho_arquivo, usuario_logado) = dados_banco
+         solicitante, motivo, quantidade, caminho_arquivo, usuario_logado, origem_demanda) = dados_banco
 
         try:
             with get_db_connection() as conn:
@@ -46,30 +46,29 @@ class ParecerRepository:
                         RETURNING id;
                     """
                     cursor.execute(query_mae, (numero, ano, usuario_id))
-                    id_mae = cursor.fetchone()[0] # <--- Aqui pegamos a chave principal!
+                    id_mae = cursor.fetchone()[0]
 
-                    # 3. INSERE NA TABELA FILHA usando o ID DA MÃE
+                    # 3. INSERE NA TABELA FILHA usando o ID DA MÃE (AGORA COM A ORIGEM)
                     query_filha = """
                         INSERT INTO sigp.pareceres (
                             id, tipo_parecer, processo, assunto, solicitante, ids_pontos,
                             tipo_execucao, item, endereco_vistoria, motivo_indeferimento,
-                            quantidade, caminho_arquivo_docx
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            quantidade, caminho_arquivo_docx, origem_demanda
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     
                     params_filha = (
                         id_mae, tipo_parecer, processo, assunto, solicitante, ids_joined,
-                        tipo_exec, item, endereco, motivo, quantidade, caminho_arquivo
+                        tipo_exec, item, endereco, motivo, quantidade, caminho_arquivo, origem_demanda
                     )
                     
                     cursor.execute(query_filha, params_filha)
                     
-                    # 4. Confirma a transação (Salva de verdade no banco)
+                    # 4. Confirma a transação
                     conn.commit()
                     
             return True
             
         except Exception as e:
-            # Se der erro em qualquer lugar acima, o banco dá Rollback automático (não salva nada pela metade)
             print(f"[LOG DB] Erro ao salvar parecer duplo: {e}")
             raise Exception(f"Erro ao registrar o Parecer no Banco de Dados: {e}")
