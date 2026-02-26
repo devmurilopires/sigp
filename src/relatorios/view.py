@@ -33,7 +33,6 @@ class RelatorioView(ctk.CTkFrame):
         titulo = "Relatórios de Ordens de Serviço" if self.tipo_relatorio == "OS" else "Relatórios de Pareceres Técnicos"
         ctk.CTkLabel(self, text=titulo, font=("Arial Black", 22), text_color="#0F8C75").pack(side="top", pady=(10, 5), anchor="w", padx=20)
 
-        # 1. CAIXA DE FILTROS ALINHADOS EM 2 LINHAS
         filtros_container = ctk.CTkFrame(self, fg_color="#F2F2F2", corner_radius=8)
         filtros_container.pack(side="top", fill="x", padx=20, pady=0)
 
@@ -49,13 +48,14 @@ class RelatorioView(ctk.CTkFrame):
             self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=130)
             self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 0, 5, width=150)
 
-            # LINHA 1: Ajustado para caber o Endereço
+            # LINHA 1 (Adicionado ORIGEM aqui)
             self._add_filtro_grid(grid_frame, "Bairro", "bairro", 1, 0, width=140)
-            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) # <-- NOVO CAMPO
+            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) 
             self._add_filtro_grid(grid_frame, "Criado por", "criado_por", 1, 2, width=130)
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=130) # <--- NOVO
             
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            datas_frame.grid(row=1, column=3, columnspan=3, pady=(5,0), sticky="e", padx=5)
+            datas_frame.grid(row=1, column=4, columnspan=2, pady=(5,0), sticky="e", padx=5)
 
         else:
             # LINHA 0 (PARECER)
@@ -65,13 +65,14 @@ class RelatorioView(ctk.CTkFrame):
             self._add_combo_grid(grid_frame, "Decisão", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 0, 3, width=220)
             self._add_combo_grid(grid_frame, "Solicitante", "solicitante", self._solicitantes_padrao, 0, 4, width=200, columnspan=2)
 
-            # LINHA 1 (PARECER): Ajustado para caber o Endereço
+            # LINHA 1 (PARECER) (Adicionado ORIGEM aqui)
             self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 1, 0, width=140)
-            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) # <-- NOVO CAMPO
+            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) 
             self._add_filtro_grid(grid_frame, "Criado por", "criado_por", 1, 2, width=190)
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=130) # <--- NOVO
 
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            datas_frame.grid(row=1, column=3, columnspan=3, pady=(5,0), sticky="e", padx=5)
+            datas_frame.grid(row=1, column=4, columnspan=2, pady=(5,0), sticky="e", padx=5)
 
         # BLOCO DE DATAS E BOTÃO
         self.usar_data_var = ctk.BooleanVar(value=False)
@@ -83,7 +84,7 @@ class RelatorioView(ctk.CTkFrame):
         self.data_fim.pack(side="left", padx=(2, 15))
         ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 13), width=90, height=32, command=self.acao_buscar).pack(side="left")
 
-        # 3. INFO BAR
+        # 3. INFO BAR (Mantido inalterado)
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
         info_frame.pack(fill="x", padx=20, pady=(15, 5))
         self.lbl_contador = ctk.CTkLabel(info_frame, text="0 resultados", font=("Arial Bold", 14), text_color="#333333")
@@ -98,7 +99,7 @@ class RelatorioView(ctk.CTkFrame):
         self.btn_prox = ctk.CTkButton(pag_frame, text=">", width=35, height=30, fg_color="#14A1D9", font=("Arial Black", 14), command=self._proxima_pagina)
         self.btn_prox.pack(side="left", padx=5)
 
-        # 4. TABELA VISUAL
+        # 4. TABELA VISUAL (Mantido inalterado)
         self.tabela_container = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=10)
         self.tabela_container.pack(fill="both", expand=True, padx=20, pady=(0, 15))
         self.header_frame = ctk.CTkFrame(self.tabela_container, fg_color="#0F8C75", corner_radius=6)
@@ -271,8 +272,14 @@ class RelatorioView(ctk.CTkFrame):
                 
                 if self.is_admin: # Necessário guardar para o Dicionário de Update do Banco
                     self.entradas_edicao[chave] = valor
-                    
-            # A PARTIR DAQUI: SÓ ADM PODE VER CAMPOS DE EDIÇÃO
+
+            elif "Origem" in chave:
+                cb = ctk.CTkComboBox(linha, values=["SPU", "SISGEP"], state="readonly", height=35)
+                cb.set(valor_texto.upper() if valor_texto else "SPU")
+                cb.pack(side="left", fill="x", expand=True)
+                self.entradas_edicao[chave] = cb
+            # --------------------------------------------------
+            
             elif "Status Conclusão" in chave:
                 cb = ctk.CTkComboBox(linha, values=["SIM", "NÃO", "NÃO AUTORIZADA"], state="readonly", height=35)
                 cb.set(valor_texto.upper() if valor_texto else "NÃO")
