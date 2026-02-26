@@ -4,9 +4,6 @@ from datetime import datetime
 
 class OSRepository:
     
-    # =========================================================
-    # TABELA: sigp.enderecos_cadastrados (NOVA ESTRUTURA)
-    # =========================================================
     def buscar_endereco_por_id(self, id_procurado):
         query = """
             SELECT logradouro, bairro, numero, complemento, is_ativo
@@ -19,7 +16,6 @@ class OSRepository:
                     cursor.execute(query, (id_procurado,))
                     resultado = cursor.fetchone()
                     if resultado:
-                        # O Repositório traduz para o que a Interface já espera
                         return {
                             "endereco": resultado[0],
                             "bairro": resultado[1],
@@ -38,7 +34,7 @@ class OSRepository:
             (id_ponto, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria, data_vistoria)
             VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s)
         """
-        data_atual = datetime.now() # Usa timestamp real do Python agora
+        data_atual = datetime.now() 
         params = (id_texto, endereco, numero, bairro, complemento, usuario, data_atual)
         try:
             with get_db_connection() as conn:
@@ -50,7 +46,6 @@ class OSRepository:
             raise Exception("Falha ao salvar o novo endereço no banco.")
 
     def atualizar_endereco(self, id_texto, endereco, numero, bairro, complemento, usuario, reativar=False):
-        # Sempre atualiza a data e o responsável, mas o is_ativo depende se vamos reativar
         set_ativo = "is_ativo = TRUE," if reativar else ""
         
         query = f"""
@@ -71,9 +66,6 @@ class OSRepository:
             print(f"[LOG DB] Erro ao atualizar endereço: {e}")
             raise Exception("Falha ao atualizar o endereço no banco.")
 
-    # =========================================================
-    # TABELA: sigp.ordens_servico (NOVA ESTRUTURA)
-    # =========================================================
     def buscar_historico_os(self, id_procurado, limite=5):
         query = """
             SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), acao_realizada, tipo_item, logradouro_completo, bairro, responsavel
@@ -110,30 +102,25 @@ class OSRepository:
             return 1
 
     def salvar_os(self, dados_os):
-        """
-        Desempacota os 15 dados que o Service manda, ignora o "lixo" antigo (colunas normalizadas que deletamos)
-        e salva de forma elegante na tabela nova.
-        """
         (numero_os, data_str, id_principal, ids_formatado,
          tipo_os, _lixo1, tipo_item, _lixo2,
          endereco_completo, bairro_str, _lixo3,
-         complemento_str, descricoes, usuario_logado, pasta_escolhida) = dados_os
+         complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda) = dados_os
 
-        # Converte a data texto 'DD/MM/YYYY' para tipo DATE real
         data_criacao = datetime.strptime(data_str, "%d/%m/%Y").date()
 
         query = """
             INSERT INTO sigp.ordens_servico (
                 numero, data_criacao, ponto_principal_id, pontos_adicionais,
                 acao_realizada, tipo_item, logradouro_completo, bairro,
-                complemento, descricao_tecnica, responsavel, modelo_documento
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                complemento, descricao_tecnica, responsavel, modelo_documento, origem_demanda
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         params = (
             numero_os, data_criacao, id_principal, ids_formatado,
             tipo_os, tipo_item, endereco_completo, bairro_str,
-            complemento_str, descricoes, usuario_logado, pasta_escolhida
+            complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda
         )
 
         try:

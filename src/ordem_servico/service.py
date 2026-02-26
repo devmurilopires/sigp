@@ -48,27 +48,27 @@ class OSService:
     # =========================================================
     # ORQUESTRAÇÃO PRINCIPAL (GERAÇÃO SEGURA - DB PRIMEIRO)
     # =========================================================
-    def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado):
-        """Método principal que coordena a geração do arquivo e os salvamentos no banco."""
-        
+    def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
         if not descricoes_acumuladas:
             return False, "Adicione pelo menos um item (descrição) na lista antes de gerar a OS."
 
-        # 1. Definição de Caminhos na Rede
+        # ---> NOVO CAMINHO DINÂMICO E INTELIGENTE DA REDE <---
+        ano_atual = datetime.now().strftime('%Y')
+        raiz_rede = r"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR"
+        
+        # Só bloqueia se o Servidor/Rede estiver fora do ar. As pastas do ano ele cria sozinho!
+        if not os.path.exists(raiz_rede):
+            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{raiz_rede}"
+
         if pasta_escolhida == "URBMIDIA":
-            pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\URBMÍDIA - SIGP"
+            pasta_base = rf"{raiz_rede}\SIGP\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
         else:
-            pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\PROXIMA PARADA - SIGP"
+            pasta_base = rf"{raiz_rede}\SIGP\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
 
-        if not os.path.exists(pasta_base):
-            return False, f"A pasta de rede não está acessível no momento:\n{pasta_base}"
-
-        # 2. Prepara os IDs
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
         ids_formatado = "-".join(ids_unicos)
         id_principal = descricoes_acumuladas[0]["id"]
 
-        # 3. Gerencia Endereços (Cadastra novos ou atualiza/reativa existentes)
         for id_atual in ids_unicos:
             dados_id = self.repo.buscar_endereco_por_id(id_atual)
             try:
@@ -86,8 +86,6 @@ class OSService:
             except Exception as e:
                 return False, f"Erro ao gerenciar endereços no banco:\n{str(e)}"
 
-        # 4. Preparação dos dados
-        ano_atual = datetime.now().strftime('%Y')
         numero_os = self.repo.obter_proximo_numero_os(pasta_escolhida, ano_atual)
         data_str = datetime.now().strftime("%d/%m/%Y")
 
@@ -105,49 +103,37 @@ class OSService:
         except:
             pass 
 
-        # GARANTIA DE MAIÚSCULAS ANTES DE SALVAR (Regra Nova)
         tipo_os_up = str(tipo_os).strip().upper() if tipo_os else ""
         tipo_item_up = str(tipo_item).strip().upper() if tipo_item else ""
 
-        # Monta os dados para o Banco
         dados_salvar_os = (
             numero_os, data_str, id_principal, ids_formatado,
             tipo_os_up, self.normalizar(tipo_os_up),
             tipo_item_up, self.normalizar(tipo_item_up),
             endereco_completo, bairro_str, self.normalizar(bairro_str),
             complemento_str, "\n".join([item["descricao"] for item in descricoes_acumuladas]),
-            usuario_logado, pasta_escolhida
+            usuario_logado, pasta_escolhida, origem_demanda 
         )
 
-        # =========================================================================
-        # 5. GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
-        # =========================================================================
         try:
-            # Tenta registrar no banco antes de fazer qualquer coisa nos arquivos!
             self.repo.salvar_os(dados_salvar_os)
         except Exception as e:
-            # Se der erro aqui, a função para e o Word/Pasta NÃO SÃO CRIADOS.
             return False, f"Erro Crítico! A OS NÃO foi gerada pois houve falha no Banco de Dados:\n{str(e)}"
 
-
-        # =========================================================================
-        # 6. SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
-        # =========================================================================
         nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
         caminho_pasta = os.path.join(pasta_base, nome_pasta)
         nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
         destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
         try:
+            # ---> O MÁGICO os.makedirs AQUI VAI CRIAR A PASTA DO ANO CASO NÃO EXISTA
             os.makedirs(caminho_pasta, exist_ok=True)
             caminho_modelo = resource_path(modelo_escolhido)
             self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas)
             
-            return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registrada com sucesso!\nSalva em: {nome_arquivo}"
+            return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registrada com sucesso!\nSalva em:\n{destino_docx}"
             
         except Exception as e:
-            # Em raros casos onde o banco salvou, mas a pasta falhou (ex: cabo de rede soltou)
-            # Retornamos o aviso para o usuário saber que o sistema tem o registro, mas o arquivo falhou.
             return False, f"Atenção: A OS foi registrada no banco, mas houve falha ao gerar o documento Word na rede:\n{e}"
 
     # =========================================================
@@ -162,7 +148,6 @@ class OSService:
             "{{ID}}": id_texto if id_texto.strip() else "-"
         }
         
-        # 1. Substitui tags normais nos parágrafos soltos
         for paragrafo in doc.paragraphs:
             texto_original = "".join(run.text for run in paragrafo.runs)
             novo_texto = texto_original
@@ -173,7 +158,6 @@ class OSService:
                 for run in paragrafo.runs: run.text = ""
                 if paragrafo.runs: paragrafo.runs[0].text = novo_texto
 
-        # 2. Substitui tags normais dentro de tabelas existentes (ex: cabeçalho)
         for tabela in doc.tables:
             for linha in tabela.rows:
                 for celula in linha.cells:
@@ -187,33 +171,27 @@ class OSService:
                             for run in paragrafo.runs: run.text = ""
                             if paragrafo.runs: paragrafo.runs[0].text = novo_texto
 
-        # 3. Encontra a tag {{DESCRICAO}} e a substitui por uma Tabela Dinâmica
         for paragrafo in doc.paragraphs:
             if "{{DESCRICAO}}" in paragrafo.text:
                 p = paragrafo._element
                 parent = p.getparent()
                 
-                # Cria a tabela de itens
                 tabela = doc.add_table(rows=1, cols=2)
                 tabela.style = 'Table Grid'
                 tabela.columns[0].width = Inches(1.0)
                 tabela.columns[1].width = Inches(5.0)
                 
-                # Cabeçalhos da tabela
                 hdr_cells = tabela.rows[0].cells
                 hdr_cells[0].text = 'ID'
                 hdr_cells[1].text = 'DESCRIÇÃO'
                 
-                # Linhas dinâmicas
                 for item in descricoes:
                     row_cells = tabela.add_row().cells
                     row_cells[0].text = item['id']
                     row_cells[1].text = item['descricao']
                 
-                # Insere a tabela no lugar do parágrafo da tag e remove a tag
                 p.addnext(tabela._element)
                 parent.remove(p)
                 break
         
-        # Salva o documento no destino na rede
         doc.save(destino_path)
