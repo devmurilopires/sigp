@@ -17,11 +17,16 @@ class DashboardService:
         df_os = self.repo.buscar_dados_os()
         df_par = self.repo.buscar_dados_pareceres()
 
-        # Força conversão para o tipo Data do Pandas
+        # Força conversão para o tipo Data e Limpa a Origem
         if not df_os.empty:
             df_os['data_dt'] = pd.to_datetime(df_os['data_dt'], errors='coerce')
+            if 'origem' in df_os.columns:
+                df_os['origem'] = df_os['origem'].fillna('SPU').astype(str).str.upper().str.strip()
+                
         if not df_par.empty:
             df_par['data_dt'] = pd.to_datetime(df_par['data_dt'], errors='coerce')
+            if 'origem' in df_par.columns:
+                df_par['origem'] = df_par['origem'].fillna('SPU').astype(str).str.upper().str.strip()
 
         return df_os, df_par
 
