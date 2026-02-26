@@ -67,7 +67,7 @@ class ParecerView(ctk.CTkFrame):
         "SMS - Secretaria Municipal de Saúde", "TRANSITAR", "TRE - Tribunal Regional Eleitoral",
         "TRE - Tribunal Regional Eleitoral do Ceará", "URBFOR - Autarquia de Urbanismo e Paisagismo de Fortaleza",
         "DIARH", "DIASIS", "DICUSTO", "DIFIS", "DIMON", "DIOPE", "DIPRE", "DITEC", "DITRAN", "Ouvidoria", "Protocolo", "Vice Presidência", "Outros"
-    ]
+        ]
         
         self._tipos_padrao = ["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"]
         self._itens_padrao = ["Abrigo Metálico", "Placa/Barrote", "Placa/Poste","Parada Segura", "Abrigo Concreto"]
@@ -75,7 +75,6 @@ class ParecerView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_interface(self):
-        # Container Principal Scrollável
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#FFFFFF")
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
@@ -90,29 +89,32 @@ class ParecerView(ctk.CTkFrame):
         bloco1 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco1.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1: Tipo e Processo
+        # Linha 1: Origem, Tipo e Processo
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
+        # ---> NOVO CAMPO: Origem da Demanda
+        self.origem_var = ctk.StringVar(value="SPU")
+        self._criar_combobox(row1, "Origem", self.origem_var, ["SPU", "SISGEP"], width=130, state="readonly")
+
         self.tipo_parecer_var = ctk.StringVar(value="Deferido")
-        self.tipo_parecer_var.trace_add("write", self._atualizar_campos) # Mostra/Oculta o motivo automaticamente
+        self.tipo_parecer_var.trace_add("write", self._atualizar_campos) 
         
-        # Como o "Tipo" é crucial, deixamos 'readonly'
-        self._criar_combobox(row1, "Tipo do Parecer", self.tipo_parecer_var, ["Deferido", "Indeferido"], width=300, state="readonly")
+        self._criar_combobox(row1, "Tipo do Parecer", self.tipo_parecer_var, ["Deferido", "Indeferido"], width=200, state="readonly")
         
         self.processo_var = ctk.StringVar()
         self.processo_var.trace_add("write", self._converter_maiusculas)
-        self._criar_entry(row1, "Nº do Processo", self.processo_var, width=500)
+        self._criar_entry(row1, "Nº do Processo", self.processo_var, width=450)
 
-        # Linha 2: Solicitante e Assunto (Permitem digitação livre, sem state='readonly')
+        # Linha 2: Solicitante e Assunto
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
         self.solicitante_var = ctk.StringVar()
-        self._criar_combobox(row2, "Solicitante ", self.solicitante_var, self._solicitantes_padrao, width=300)
+        self._criar_combobox(row2, "Solicitante", self.solicitante_var, self._solicitantes_padrao, width=300)
 
         self.assunto_var = ctk.StringVar()
-        self._criar_combobox(row2, "Assunto ", self.assunto_var, self._assuntos_padrao, width=500)
+        self._criar_combobox(row2, "Assunto", self.assunto_var, self._assuntos_padrao, width=500)
 
         # =========================================================
         # BLOCO 2: DADOS TÉCNICOS E ENDEREÇO
@@ -152,17 +154,15 @@ class ParecerView(ctk.CTkFrame):
         self.id_entry_var = ctk.StringVar()
         self._criar_entry(row_id, "Adicionar ID", self.id_entry_var, width=300)
         
-        # Botão alinhado ao lado do Entry de ID
         btn_add_id = ctk.CTkButton(row_id, text="➕ Adicionar ID", fg_color="#0F8C75", font=("Arial Bold", 13), height=35, command=self._adicionar_ids)
-        btn_add_id.pack(side="left", padx=10, pady=(20,0)) # Pady empurra pra baixo pra alinhar com o input
+        btn_add_id.pack(side="left", padx=10, pady=(20,0)) 
 
-        # Tabela visual dos IDs
         self.lista_ids_frame = ctk.CTkFrame(bloco3, fg_color="#FFFFFF", corner_radius=6)
         self.lista_ids_frame.pack(fill="x", padx=15, pady=(0, 15))
-        self._renderizar_lista_ids() # Desenha a lista inicial vazia
+        self._renderizar_lista_ids() 
 
         # =========================================================
-        # BLOCO 4: MOTIVO DE INDEFERIMENTO (Oculto por Padrão)
+        # BLOCO 4: MOTIVO DE INDEFERIMENTO
         # =========================================================
         self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color="#FFF0F0", corner_radius=10, border_width=1, border_color="#FFD6D6")
         
@@ -179,7 +179,7 @@ class ParecerView(ctk.CTkFrame):
         ctk.CTkLabel(footer_frame, text=f"Responsável: {self.usuario_logado}", text_color="gray", font=("Arial", 12)).pack(side="left", padx=10)
         ctk.CTkButton(footer_frame, text="📄 GERAR PARECER TÉCNICO", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self._acao_gerar_parecer).pack(side="right", padx=10)
 
-    # --- FUNÇÕES DE CONSTRUÇÃO DE UI (ALINHAMENTO PERFEITO) ---
+    # --- FUNÇÕES DE CONSTRUÇÃO DE UI ---
     def _criar_entry(self, parent, label_text, variable, width):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
@@ -195,9 +195,8 @@ class ParecerView(ctk.CTkFrame):
 
     # --- LÓGICA DE INTERFACE ---
     def _atualizar_campos(self, *args):
-        """Mostra a caixa de motivo apenas se o parecer for Indeferido."""
         if self.tipo_parecer_var.get() == "Indeferido":
-            self.frame_motivo.pack(fill="x", pady=10, padx=10, before=self.scroll_frame.winfo_children()[-1]) # Coloca antes do rodapé
+            self.frame_motivo.pack(fill="x", pady=10, padx=10, before=self.scroll_frame.winfo_children()[-1])
         else:
             self.frame_motivo.pack_forget()
 
@@ -221,7 +220,6 @@ class ParecerView(ctk.CTkFrame):
         self._renderizar_lista_ids()
 
     def _renderizar_lista_ids(self):
-        # Limpa os itens antigos
         for w in self.lista_ids_frame.winfo_children(): 
             w.destroy()
         
@@ -229,7 +227,6 @@ class ParecerView(ctk.CTkFrame):
             ctk.CTkLabel(self.lista_ids_frame, text="Nenhum ID adicionado ainda.", text_color="gray", font=("Arial", 12)).pack(pady=10)
             return
 
-        # Frame interno para agrupar as "Pílulas" (Badges)
         container_badges = ctk.CTkFrame(self.lista_ids_frame, fg_color="transparent")
         container_badges.pack(fill="x", pady=10, padx=10)
 
@@ -248,8 +245,9 @@ class ParecerView(ctk.CTkFrame):
 
     # --- AÇÃO PRINCIPAL ---
     def _acao_gerar_parecer(self):
-        # Coleta os dados digitados na tela e monta o dicionário pro Service
+        # ---> NOVO: Pegando a origem_var.get()
         dados_form = {
+            'origem': self.origem_var.get(),
             'tipo': self.tipo_parecer_var.get(),
             'processo': self.processo_var.get().strip(),
             'assunto': self.assunto_var.get().strip(),
@@ -261,7 +259,6 @@ class ParecerView(ctk.CTkFrame):
             'quantidade': self.quantidade_var.get().strip()
         }
 
-        # Chama o cérebro
         sucesso, msg = self.service.processar_geracao_parecer(dados_form, self.ids_list, self.usuario_logado)
         
         if sucesso:
@@ -279,6 +276,5 @@ class ParecerView(ctk.CTkFrame):
         self._renderizar_lista_ids()
         self.id_entry_var.set("")
 
-# Ponto de entrada padrão
 def renderizar(frame_destino, usuario_logado):
     return ParecerView(master=frame_destino, usuario_logado=usuario_logado)
