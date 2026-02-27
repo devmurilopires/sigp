@@ -27,20 +27,18 @@ def iniciar_sistema(usuario_dados):
     app.title("SIGP - Sistema Integrado de Gerenciamento e Produtividade")
     app.configure(fg_color=COLOR_BG)
     
-    # Tenta forçar tela cheia logo de cara
+    # Tenta maximizar a janela no Windows. Se falhar (Linux/Mac), define um tamanho padrão.
     try:
         app.state("zoomed") 
         app.iconbitmap(resource_path("assets/sigp_logo.ico"))
     except:
         app.geometry("1280x720")
 
-    # =====================================================================
-    # 1. TELA DE CARREGAMENTO (SPLASH SCREEN)
-    # =====================================================================
+    # TELA DE CARREGAMENTO (SPLASH SCREEN)
     tela_carregamento = ctk.CTkFrame(app, fg_color=COLOR_BG)
     tela_carregamento.pack(fill="both", expand=True)
     
-    # Tenta carregar a sua logo para a tela de espera, se não achar, põe texto
+    # Tenta carregar o logo para a splash. Se falhar, mostra só o nome do sistema em texto grande.
     try:
         caminho_logo = resource_path("assets/sigp_logo.png")
         img_logo_splash = ctk.CTkImage(Image.open(caminho_logo), size=(350, 350))
@@ -50,12 +48,11 @@ def iniciar_sistema(usuario_dados):
         
     ctk.CTkLabel(tela_carregamento, text="Carregando módulos e painéis do sistema...\nPor favor, aguarde. ⏳", font=("Arial Bold", 23), text_color="#555", justify="center").pack(expand=True, pady=(0, 150))
     
-    # MÁGICA: Força o Windows a pintar a tela de aguarde AGORA, antes de travar processando
+    # Força a atualização da tela para mostrar a splash antes de montar o sistema
     app.update()
 
-    # =====================================================================
-    # 2. MONTAGEM DA INTERFACE PRINCIPAL (Escondida dentro do frame_principal)
-    # =====================================================================
+
+    # MONTAGEM DO SISTEMA (ENQUANTO A TELA DE CARREGAMENTO ESTÁ VISÍVEL)
     frame_principal = ctk.CTkFrame(app, fg_color="transparent")
     
     # TOPO
@@ -64,13 +61,12 @@ def iniciar_sistema(usuario_dados):
 
     try:
         caminho_logo = resource_path("assets/sigp_logo.png")
-        # Dei uma leve ajustada no tamanho da logo (90x90) para o cabeçalho respirar melhor
         img_logo = ctk.CTkImage(Image.open(caminho_logo), size=(90, 90))
         ctk.CTkLabel(frame_topo, image=img_logo, text="").pack(side="left", padx=(20, 10), pady=5)
     except:
         ctk.CTkLabel(frame_topo, text="SIGP", font=("Arial Black", 24), text_color=COLOR_PRIMARY).pack(side="left", padx=(20, 10))
 
-    # O segredo do alinhamento está aqui no 'pady=(12, 0)', que empurra o texto um pouco para baixo
+    # Título do sistema
     ctk.CTkLabel(frame_topo, text="Sistema Integrado de Gerenciamento e Produtividade", font=("Century Gothic bold", 20)).pack(side="left", pady=(12, 0))
 
     perfil_texto = f"👤 Olá, {nome_usuario} ({'Admin' if is_admin else 'Comum'})"
@@ -100,18 +96,27 @@ def iniciar_sistema(usuario_dados):
         aba = ctk.CTkFrame(frame_conteudo, fg_color="transparent")
         abas[nome] = aba
 
-    # --- PROCESSAMENTO PESADO QUE TRAVAVA A TELA ---
-    renderizar_os(abas["Ordem de Serviço"], usuario_dados)
-    renderizar_dashboard(abas["Gráficos"], usuario_dados)
-    renderizar_relatorios(abas["Relatórios OS"], usuario_dados, tipo="OS")
-    renderizar_parecer(abas["Parecer Técnico"], usuario_dados)
-    renderizar_relatorios(abas["Relatórios Parecer"], usuario_dados, tipo="PARECER")
-    renderizar_historico(abas["Histórico"], usuario_dados)
-    if is_admin: renderizar_enderecos(abas["Cadastro de Endereço"], usuario_dados)
+    # Renderiza os painéis dentro de cada aba, passando os dados do usuário para personalizar o conteúdo
+    view_os = renderizar_os(abas["Ordem de Serviço"], usuario_dados)
+    view_dash = renderizar_dashboard(abas["Gráficos"], usuario_dados)
+    view_rel_os = renderizar_relatorios(abas["Relatórios OS"], usuario_dados, tipo="OS")
+    view_par = renderizar_parecer(abas["Parecer Técnico"], usuario_dados)
+    view_rel_par = renderizar_relatorios(abas["Relatórios Parecer"], usuario_dados, tipo="PARECER")
+    view_hist = renderizar_historico(abas["Histórico"], usuario_dados)
+    if is_admin: 
+        view_end = renderizar_enderecos(abas["Cadastro de Endereço"], usuario_dados)
 
     def selecionar_aba(nome_aba):
         for aba in abas.values(): aba.pack_forget()
         abas[nome_aba].pack(fill="both", expand=True)
+
+        # AUTO-ATUALIZAÇÃO
+        if nome_aba == "Gráficos":
+            view_dash.atualizar_completo()
+        elif nome_aba == "Relatórios OS":
+            view_rel_os.acao_buscar()
+        elif nome_aba == "Relatórios Parecer":
+            view_rel_par.acao_buscar()
 
     for texto, cor in menu_botoes:
         btn = ctk.CTkButton(menu_container, text=texto, fg_color=cor, font=("Arial Bold", 13), corner_radius=8, height=35, hover_color=COLOR_PRIMARY_HOVER, command=lambda t=texto: selecionar_aba(t))
@@ -119,9 +124,6 @@ def iniciar_sistema(usuario_dados):
 
     selecionar_aba("Ordem de Serviço")
 
-    # =====================================================================
-    # 3. FIM DO CARREGAMENTO - EXIBE O SISTEMA
-    # =====================================================================
     # Apaga a tela de carregamento e mostra o sistema completo que montamos escondido
     tela_carregamento.destroy()
     frame_principal.pack(fill="both", expand=True)
