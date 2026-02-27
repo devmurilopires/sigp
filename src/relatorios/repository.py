@@ -3,12 +3,9 @@ import json
 from config.database import get_db_connection
 
 class RelatorioRepository:
-    # =========================================================
-    # BUSCAS GERAIS (TABELA)
-    # =========================================================
 
+    # BUSCAS GERAIS (TABELA)
     def buscar_ordens_servico(self, filtros):
-        # ADICIONADO: origem_demanda no final do SELECT
         query = """
             SELECT id, numero, data_criacao, ponto_principal_id, pontos_adicionais, 
                    acao_realizada, tipo_item, logradouro_completo, bairro, 
@@ -63,7 +60,6 @@ class RelatorioRepository:
             return []
 
     def buscar_pareceres(self, filtros):
-        # ADICIONADO: p.endereco_vistoria e p.origem_demanda no SELECT
         query = """
             SELECT p.id, b.numero_parecer_ano, p.tipo_parecer, p.processo, p.assunto, 
                    p.ids_pontos, p.solicitante, p.endereco_vistoria, p.origem_demanda, 
@@ -116,9 +112,7 @@ class RelatorioRepository:
             print(f"Erro ao buscar Pareceres: {e}")
             return []
 
-    # =========================================================
-    # BUSCA DE TODOS OS DETALHES E FUNÇÕES DE EXCLUSÃO (MANTIDOS INTACTOS)
-    # =========================================================
+    # BUSCA DE TODOS OS DETALHES E FUNÇÕES DE EXCLUSÃO
     def buscar_detalhes_os(self, id_banco):
         query = """
             SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), origem_demanda, ponto_principal_id, pontos_adicionais, 
@@ -132,9 +126,10 @@ class RelatorioRepository:
                     cursor.execute(query, (id_banco,))
                     row = cursor.fetchone()
                     if row:
+                        # ---> REMOVIDO "(Croqui)" da Descrição <---
                         colunas = ["Nº OS", "Data Criação", "Origem", "ID Principal", "IDs Adicionais", 
                                    "Ação Realizada", "Tipo Item", "Endereço", "Bairro", "Complemento",
-                                   "Descrição (Croqui)", "Criado por", "Modelo", "Status Conclusão"]
+                                   "Descrição", "Criado por", "Modelo", "Status Conclusão"]
                         return dict(zip(colunas, row))
         except Exception as e: pass
         return None
@@ -155,9 +150,9 @@ class RelatorioRepository:
                     cursor.execute(query, (id_banco,))
                     row = cursor.fetchone()
                     if row:
-                        colunas = ["Nº Parecer", "Data Criação", "Origem", "Decisão (DEFERIDO/INDEFERIDO)", "Processo", 
+                        colunas = ["Nº Parecer", "Data Criação", "Origem", "Decisão", "Processo", 
                                    "Assunto", "Solicitante", "IDs dos Pontos", "Ação Recomendada", 
-                                   "Item", "Endereço", "Quantidade", "Motivo (Indeferido)", "Criado por"]
+                                   "Item", "Endereço", "Quantidade", "Motivo", "Criado por"]
                         return dict(zip(colunas, row))
         except Exception as e: pass
         return None
@@ -167,7 +162,7 @@ class RelatorioRepository:
             UPDATE sigp.ordens_servico 
             SET origem_demanda=%s, ponto_principal_id=%s, pontos_adicionais=%s, acao_realizada=%s, 
                 tipo_item=%s, logradouro_completo=%s, bairro=%s, complemento=%s,
-                descricao_tecnica=%s, status_conclusao=%s, 
+                descricao_tecnica=%s, status_conclusao=%s, responsavel=%s,
                 data_conclusao = CASE 
                     WHEN %s IN ('SIM', 'NÃO AUTORIZADA') THEN COALESCE(data_conclusao, CURRENT_TIMESTAMP)
                     ELSE NULL 
@@ -181,23 +176,44 @@ class RelatorioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, (origem_up, dados.get("ID Principal"), dados.get("IDs Adicionais"), acao_up, item_up, dados.get("Endereço"), dados.get("Bairro"), dados.get("Complemento"), dados.get("Descrição (Croqui)"), status, status, id_banco))
+                    cursor.execute(query, (
+                        origem_up, dados.get("ID Principal"), dados.get("IDs Adicionais"), acao_up, item_up, 
+                        dados.get("Endereço"), dados.get("Bairro"), dados.get("Complemento"), 
+                        dados.get("Descrição"), status, dados.get("Criado por"), status, id_banco
+                    ))
             return True, "Ordem de Serviço atualizada com sucesso!"
         except Exception as e: return False, f"Erro ao atualizar: {e}"
 
     def atualizar_parecer(self, id_banco, dados):
-        query = """
+        query1 = """
             UPDATE sigp.pareceres 
             SET origem_demanda=%s, tipo_parecer=%s, processo=%s, assunto=%s, solicitante=%s, 
                 ids_pontos=%s, tipo_execucao=%s, item=%s, endereco_vistoria=%s,
                 quantidade=%s, motivo_indeferimento=%s
             WHERE id = %s
         """
+        query2 = """
+            UPDATE common.pareceres_base 
+            SET criado_por_id = COALESCE(
+                (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %s LIMIT 1), 
+                criado_por_id
+            )
+            WHERE id = %s
+        """
         origem_up = str(dados.get("Origem", "SPU")).strip().upper()
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, (origem_up, dados.get("Decisão (DEFERIDO/INDEFERIDO)"), dados.get("Processo"), dados.get("Assunto"), dados.get("Solicitante"), dados.get("IDs dos Pontos"), dados.get("Ação Recomendada"), dados.get("Item"), dados.get("Endereço"), dados.get("Quantidade"), dados.get("Motivo (Indeferido)"), id_banco))
+                    # Salva os dados do parecer
+                    cursor.execute(query1, (
+                        origem_up, dados.get("Decisão"), dados.get("Processo"), dados.get("Assunto"), 
+                        dados.get("Solicitante"), dados.get("IDs dos Pontos"), dados.get("Ação Recomendada"), 
+                        dados.get("Item"), dados.get("Endereço"), dados.get("Quantidade"), dados.get("Motivo"), id_banco
+                    ))
+                    # Salva o usuário Responsável
+                    if dados.get("Criado por"):
+                        cursor.execute(query2, (f"%{dados.get('Criado por').strip()}%", id_banco))
+                        
             return True, "Parecer atualizado com sucesso!"
         except Exception as e: return False, f"Erro ao atualizar: {e}"
 
