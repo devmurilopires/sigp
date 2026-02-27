@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from docx import Document
 from src.parecer.repository import ParecerRepository
+from config.settings import RAIZ_REDE
 
 try:
     from src.shared.utils import resource_path
@@ -56,15 +57,12 @@ class ParecerService:
         
         if not os.path.exists(modelo):
             return False, f"Modelo Word não encontrado em: {modelo}"
-
-        # ---> NOVO CAMINHO DINÂMICO E INTELIGENTE DA REDE <---
-        raiz_rede = r"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR"
         
         # Só bloqueia se o Servidor/Rede estiver fora do ar.
-        if not os.path.exists(raiz_rede):
-            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{raiz_rede}"
+        if not os.path.exists(RAIZ_REDE):
+            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
-        pasta_base = rf"{raiz_rede}\SIGP\{ano}\PARECERES TECNICOS"
+        pasta_base = rf"{RAIZ_REDE}\SIGP\{ano}\PARECERES TECNICOS"
         pasta_saida = os.path.join(pasta_base, tipo_parecer.upper())
         
         nome_arquivo = f"Parecer_{numero:03d}_{ano}_{tipo_parecer}.docx"

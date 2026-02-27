@@ -4,6 +4,7 @@ from datetime import datetime
 from docx import Document
 from docx.shared import Inches
 from src.ordem_servico.repository import OSRepository
+from config.settings import RAIZ_REDE
 
 # Tenta puxar o utils da raiz ou da pasta shared
 try:
@@ -59,16 +60,15 @@ class OSService:
 
         # ---> NOVO CAMINHO DINÂMICO E INTELIGENTE DA REDE <---
         ano_atual = datetime.now().strftime('%Y')
-        raiz_rede = r"C:\Users\sousa\OneDrive\Documentos\ARQUIVOS SIGP - SIGA - SPR"
         
         # Só bloqueia se o Servidor/Rede estiver fora do ar. As pastas do ano ele cria sozinho!
-        if not os.path.exists(raiz_rede):
-            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{raiz_rede}"
+        if not os.path.exists(RAIZ_REDE):
+            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
         if pasta_escolhida == "URBMIDIA":
-            pasta_base = rf"{raiz_rede}\SIGP\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
+            pasta_base = rf"{RAIZ_REDE}\SIGP\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
         else:
-            pasta_base = rf"{raiz_rede}\SIGP\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
+            pasta_base = rf"{RAIZ_REDE}\SIGP\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
 
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
         ids_formatado = "-".join(ids_unicos)
