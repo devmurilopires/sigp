@@ -33,12 +33,12 @@ class ParecerRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
                     
-                    # 1. Pega o ID numérico do usuário baseado no nome
+                    # Pega o ID numérico do usuário baseado no nome
                     cursor.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s OR username = %s LIMIT 1", (usuario_logado, usuario_logado))
                     user_row = cursor.fetchone()
                     usuario_id = user_row[0] if user_row else None
 
-                    # 2. INSERE NA TABELA MÃE e pega o ID gerado usando 'RETURNING id'
+                    # INSERE NA TABELA MÃE e pega o ID gerado usando 'RETURNING id'
                     query_mae = """
                         INSERT INTO common.pareceres_base 
                         (sistema_origem, numero_parecer_ano, ano, criado_por_id) 
@@ -48,7 +48,7 @@ class ParecerRepository:
                     cursor.execute(query_mae, (numero, ano, usuario_id))
                     id_mae = cursor.fetchone()[0]
 
-                    # 3. INSERE NA TABELA FILHA usando o ID DA MÃE (AGORA COM A ORIGEM)
+                    # INSERE NA TABELA FILHA usando o ID DA MÃE (AGORA COM A ORIGEM)
                     query_filha = """
                         INSERT INTO sigp.pareceres (
                             id, tipo_parecer, processo, assunto, solicitante, ids_pontos,
@@ -64,7 +64,7 @@ class ParecerRepository:
                     
                     cursor.execute(query_filha, params_filha)
                     
-                    # 4. Confirma a transação
+                    # Confirma a transação
                     conn.commit()
                     
             return True

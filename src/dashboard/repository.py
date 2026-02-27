@@ -7,6 +7,7 @@ warnings.filterwarnings('ignore', category=UserWarning)
 
 class DashboardRepository:
     def buscar_dados_os(self):
+        # Consulta SQL para buscar os dados de Ordens de Serviço, já com os campos necessários para o Dashboard
         query = """
             SELECT acao_realizada AS tipo_os, 
                    tipo_item, 
@@ -27,6 +28,7 @@ class DashboardRepository:
             return pd.DataFrame()
 
     def buscar_dados_pareceres(self):
+        # Consulta SQL para buscar os dados de Pareceres, já com os campos necessários para o Dashboard
         query = """
             SELECT p.tipo_parecer AS tipo, 
                    u.nome_completo AS criado_por, 

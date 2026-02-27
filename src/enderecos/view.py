@@ -19,7 +19,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         self._carregar_tabela()
 
     def _construir_interface(self):
-        # === TOPO ===
+        # TOPO
         header = ctk.CTkFrame(self, fg_color=COLOR_WHITE, height=60, corner_radius=0)
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
@@ -28,11 +28,11 @@ class CadastroEnderecoView(ctk.CTkFrame):
         btn_exportar = ctk.CTkButton(header, text="📥 EXPORTAR EXCEL", font=("Arial Bold", 12), fg_color="#27AE60", hover_color="#1E8449", command=self.acao_exportar)
         btn_exportar.pack(side="right", padx=20, pady=15)
 
-        # === CORPO (PANEL DUPLO) ===
+        # CORPO (PANEL DUPLO)
         corpo = ctk.CTkFrame(self, fg_color="transparent")
         corpo.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # ESQUERDA: Formulário
+        # Formulário
         frame_form = ctk.CTkFrame(corpo, fg_color=COLOR_WHITE, width=350, corner_radius=8)
         frame_form.pack(side="left", fill="y", padx=(0, 20))
         frame_form.pack_propagate(False)
@@ -47,7 +47,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
             ("Bairro", "bairro"),
             ("Complemento / Referência", "complemento")
         ]
-
+        # Gerar os campos dinamicamente a partir da lista acima, armazenando as referências em um dicionário para fácil acesso depois
         for label_text, key in campos:
             ctk.CTkLabel(frame_form, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w", padx=20)
             entry = ctk.CTkEntry(frame_form, width=310, height=35)
@@ -65,7 +65,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         ctk.CTkButton(frame_btns, text="LIMPAR", fg_color="#95A5A6", hover_color="#7F8C8D", width=100, height=35, command=self.limpar_form).pack(side="left")
         ctk.CTkButton(frame_btns, text="💾 SALVAR", fg_color=COLOR_PRIMARY, hover_color="#0B6B59", height=35, command=self.acao_salvar).pack(side="right", fill="x", expand=True, padx=(10, 0))
 
-        # DIREITA: Tabela de Pesquisa
+        # Tabela de Pesquisa
         frame_lista = ctk.CTkFrame(corpo, fg_color=COLOR_WHITE, corner_radius=8)
         frame_lista.pack(side="right", fill="both", expand=True)
 
@@ -110,6 +110,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         self._preencher_treeview(self.df_atual)
 
     def _preencher_treeview(self, df):
+        # Limpa a tabela antes de preencher com os novos dados
         for item in self.tree.get_children():
             self.tree.delete(item)
             
@@ -162,7 +163,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         if sucesso:
             messagebox.showinfo("Sucesso", msg)
             self.limpar_form()
-            self._carregar_tabela() # Atualiza a lista na hora
+            self._carregar_tabela()
             self.entry_busca.delete(0, 'end')
         else:
             messagebox.showerror("Erro", msg)

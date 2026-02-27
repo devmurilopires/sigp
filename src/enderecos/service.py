@@ -7,14 +7,14 @@ class EnderecoService:
         self.repo = EnderecoRepository()
 
     def salvar_endereco(self, dados: dict, usuario_logado: dict):
-        # 1. Validação Simples
+        # Validação Simples
         id_ponto = dados.get('id_ponto', '').strip().upper()
         endereco = dados.get('endereco', '').strip().upper()
         
         if not id_ponto or not endereco:
             return False, "Os campos 'ID do Ponto' e 'Endereço' são obrigatórios!"
 
-        # 2. Prepara os dados opcionais
+        # Prepara os dados opcionais
         numero = dados.get('numero', '').strip() or 'S/N'
         bairro = dados.get('bairro', '').strip().upper()
         complemento = dados.get('complemento', '').strip().upper()
@@ -23,7 +23,7 @@ class EnderecoService:
         # O usuário logado assina automaticamente quem registrou a vistoria/ponto
         criado_por = usuario_logado.get('nome_completo', 'Sistema')
 
-        # 3. Manda para o repositório
+        # Manda para o repositório
         return self.repo.salvar_ou_atualizar(id_ponto, endereco, numero, bairro, complemento, status, criado_por)
 
     def listar_enderecos(self):

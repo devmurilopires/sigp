@@ -83,17 +83,15 @@ class ParecerView(ctk.CTkFrame):
         header_frame.pack(fill="x", pady=(0, 20))
         ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
 
-        # =========================================================
-        # BLOCO 1: DADOS BÁSICOS DO PROCESSO
-        # =========================================================
+        # DADOS BÁSICOS DO PROCESSO
         bloco1 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco1.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1: Origem, Tipo e Processo
+        # Origem, Tipo e Processo
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        # ---> NOVO CAMPO: Origem da Demanda
+        # Origem da Demanda
         self.origem_var = ctk.StringVar(value="SPU")
         self._criar_combobox(row1, "Origem", self.origem_var, ["SPU", "SISGEP"], width=130, state="readonly")
 
@@ -106,7 +104,7 @@ class ParecerView(ctk.CTkFrame):
         self.processo_var.trace_add("write", self._converter_maiusculas)
         self._criar_entry(row1, "Nº do Processo", self.processo_var, width=450)
 
-        # Linha 2: Solicitante e Assunto
+        # Solicitante e Assunto
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
@@ -116,13 +114,11 @@ class ParecerView(ctk.CTkFrame):
         self.assunto_var = ctk.StringVar()
         self._criar_combobox(row2, "Assunto", self.assunto_var, self._assuntos_padrao, width=500)
 
-        # =========================================================
-        # BLOCO 2: DADOS TÉCNICOS E ENDEREÇO
-        # =========================================================
+        # DADOS TÉCNICOS E ENDEREÇO
         bloco2 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco2.pack(fill="x", pady=10, padx=10)
 
-        # Linha 3: Tipo de Execução e Item
+        # Tipo de Execução e Item
         row3 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row3.pack(fill="x", pady=(15, 5), padx=15)
 
@@ -132,7 +128,7 @@ class ParecerView(ctk.CTkFrame):
         self.item_var = ctk.StringVar(value=self._itens_padrao[0])
         self._criar_combobox(row3, "Tipo de Item", self.item_var, self._itens_padrao, width=300, state="readonly")
 
-        # Linha 4: Endereço e Quantidade
+        # Endereço e Quantidade
         row4 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row4.pack(fill="x", pady=(5, 15), padx=15)
 
@@ -142,9 +138,7 @@ class ParecerView(ctk.CTkFrame):
         self.quantidade_var = ctk.StringVar()
         self._criar_entry(row4, "Quantidade (Por extenso: Um, Dois...)", self.quantidade_var, width=300)
 
-        # =========================================================
-        # BLOCO 3: GESTÃO DE IDs DO PONTO
-        # =========================================================
+        # GESTÃO DE IDs DO PONTO
         bloco3 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco3.pack(fill="x", pady=10, padx=10)
 
@@ -161,18 +155,14 @@ class ParecerView(ctk.CTkFrame):
         self.lista_ids_frame.pack(fill="x", padx=15, pady=(0, 15))
         self._renderizar_lista_ids() 
 
-        # =========================================================
-        # BLOCO 4: MOTIVO DE INDEFERIMENTO
-        # =========================================================
+        # MOTIVO DE INDEFERIMENTO
         self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color="#FFF0F0", corner_radius=10, border_width=1, border_color="#FFD6D6")
         
         ctk.CTkLabel(self.frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 13), text_color="#C21010").pack(anchor="w", padx=15, pady=(10, 0))
         self.entry_motivo = ctk.CTkTextbox(self.frame_motivo, height=100)
         self.entry_motivo.pack(fill="x", padx=15, pady=(5, 15))
 
-        # =========================================================
         # RODAPÉ: BOTÃO DE GERAR
-        # =========================================================
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=30)
         
@@ -245,7 +235,6 @@ class ParecerView(ctk.CTkFrame):
 
     # --- AÇÃO PRINCIPAL ---
     def _acao_gerar_parecer(self):
-        # ---> NOVO: Pegando a origem_var.get()
         dados_form = {
             'origem': self.origem_var.get(),
             'tipo': self.tipo_parecer_var.get(),

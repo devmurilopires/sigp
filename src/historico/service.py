@@ -2,6 +2,7 @@ from config.database import get_db_connection
 
 class HistoricoService:
     def buscar_historico(self, filtros):
+        # Monta a query SQL com base nos filtros fornecidos
         query = "SELECT modulo, numero, motivo, excluido_por, TO_CHAR(data_exclusao, 'DD/MM/YYYY HH24:MI'), dados FROM common.lixeira WHERE 1=1"
         params = []
         

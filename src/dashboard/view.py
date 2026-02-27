@@ -41,7 +41,8 @@ class DashboardView(ctk.CTkFrame):
         frame_filtros.pack_propagate(False)
 
         ctk.CTkLabel(frame_filtros, text="Painel Analítico Gerencial", font=("Arial Black", 22), text_color=COLOR_PRIMARY).pack(side="left", padx=20, pady=20)
-
+        
+        # Botões de Ação (Exportar PDF, Exportar Excel, Atualizar)
         self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, hover_color="#D33F1D", width=70, height=35, command=self.exportar_pdf)
         self.btn_pdf.pack(side="right", padx=10, pady=17)
 
@@ -51,6 +52,7 @@ class DashboardView(ctk.CTkFrame):
         self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color="#0B6B59", width=110, height=35, command=self.atualizar_completo)
         self.btn_filtrar.pack(side="right", padx=(20, 5), pady=17)
 
+        # Filtros de Ano e Mês
         self.cb_mes = ctk.CTkComboBox(frame_filtros, values=["Todos", "01 - Jan", "02 - Fev", "03 - Mar", "04 - Abr", "05 - Mai", "06 - Jun", "07 - Jul", "08 - Ago", "09 - Set", "10 - Out", "11 - Nov", "12 - Dez"], width=130, height=35)
         self.cb_mes.set("Todos")
         self.cb_mes.pack(side="right", padx=10, pady=17)
@@ -73,9 +75,7 @@ class DashboardView(ctk.CTkFrame):
         self.frame_graficos = ctk.CTkFrame(self.scroll_area, fg_color="transparent")
         self.frame_graficos.pack(fill="both", expand=True, pady=10)
 
-    # =========================================================
     # INTELIGÊNCIA DE EXPORTAÇÃO
-    # =========================================================
     def _gerar_dataframe_resumo(self):
         itens_painel = [
             "IMPLANTAÇÃO PLACA/POSTE", "IMPLANTAÇÃO PLACA/BARROTE", "IMPLANTAÇÃO ABRIGO METÁLICO", "IMPLANTAÇÃO PARADA SEGURA",
@@ -234,9 +234,7 @@ class DashboardView(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("Erro de Exportação", f"Erro ao gerar o arquivo Excel:\n{e}")
 
-    # =========================================================
     # RENDERIZAÇÃO DE COMPONENTES UI
-    # =========================================================
     def criar_card(self, parent, titulo, valor, cor_destaque, icone):
         card = ctk.CTkFrame(parent, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
         barra = ctk.CTkFrame(card, fg_color=cor_destaque, width=6, height=60 , corner_radius=8)
@@ -266,7 +264,8 @@ class DashboardView(ctk.CTkFrame):
         for i, col in enumerate(df_resumo.columns):
             largura = 280 if i == 0 else 50
             ctk.CTkLabel(header_frame, text=col, font=("Arial Bold", 11), text_color="white", width=largura, anchor="w" if i==0 else "center").pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
-
+        
+        # Corpo da Tabela
         for idx, row in df_corpo.iterrows():
             bg_color = "#F9F9F9" if idx % 2 == 0 else "#FFFFFF"
             row_frame = ctk.CTkFrame(container, fg_color=bg_color, corner_radius=0, height=28)
@@ -318,7 +317,7 @@ class DashboardView(ctk.CTkFrame):
 
         self.df_os_f, self.df_par_f = self.service.filtrar_dados(self.df_os_raw, self.df_par_raw, ano_sel, mes_sel)
 
-        # 1. CARDS
+        # CARDS
         for w in self.frame_kpis.winfo_children(): w.destroy()
         c_os, c_par, c_def, c_indef = self.service.calcular_kpis(self.df_os_f, self.df_par_f)
         
@@ -328,10 +327,10 @@ class DashboardView(ctk.CTkFrame):
         self.criar_card(self.frame_kpis, "PARECERES DEFERIDOS", f"{c_def}", COLOR_PRIMARY, "✅").grid(row=0, column=2, padx=8, sticky="ew")
         self.criar_card(self.frame_kpis, "PARECERES INDEFERIDOS", f"{c_indef}", COLOR_SECONDARY, "❌").grid(row=0, column=3, padx=8, sticky="ew")
 
-        # 2. TABELA
+        # TABELA
         self._desenhar_tabela(self.df_os_f)
 
-        # 3. GRÁFICOS
+        # GRÁFICOS
         for w in self.frame_graficos.winfo_children(): w.destroy()
         
         self.fig, axs = plt.subplots(7, 2, figsize=(14, 40), facecolor=COLOR_WHITE)
@@ -343,7 +342,7 @@ class DashboardView(ctk.CTkFrame):
             meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
             meses_en = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-            # LINHA 1 - Evolução Mensal
+            # Evolução Mensal
             ax = axs[0, 0]
             if not self.df_os_f.empty:
                 counts = self.df_os_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0)
@@ -368,7 +367,7 @@ class DashboardView(ctk.CTkFrame):
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, f"Evolução de Pareceres  ({ano_sel})", grid_axis='y')
 
-            # LINHA 2 - Bairros e Solicitantes
+            # Bairros e Solicitantes
             ax = axs[1, 0]
             if not self.df_os_f.empty and 'bairro' in self.df_os_f.columns:
                 counts = self.df_os_f['bairro'].replace("", "Não Informado").fillna("Não Informado").value_counts().head(8)
@@ -397,7 +396,7 @@ class DashboardView(ctk.CTkFrame):
                     if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, "Top 8 Solicitantes (Pareceres)", grid_axis='x')
 
-            # LINHA 3 - Status (ATUALIZADO COM NÚMERO E PORCENTAGEM)
+            # Status (ATUALIZADO COM NÚMERO E PORCENTAGEM)
             ax = axs[2, 0]
             if not self.df_os_f.empty and 'status_conclusao' in self.df_os_f.columns:
                 status_counts = self.df_os_f['status_conclusao'].fillna("NÃO").value_counts()
@@ -426,7 +425,7 @@ class DashboardView(ctk.CTkFrame):
                 self._configurar_eixo(ax, "Taxa de Aprovação (Pareceres)")
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
 
-            # LINHA 4 - Natureza e Tipo
+            # Natureza e Tipo
             ax = axs[3, 0]
             if not self.df_os_f.empty and 'tipo_os' in self.df_os_f.columns:
                 counts = self.df_os_f['tipo_os'].str.upper().value_counts().head(5)
@@ -455,7 +454,7 @@ class DashboardView(ctk.CTkFrame):
                     if h > 0: ax.text(bar.get_x() + bar.get_width()/2, h + (max_val*0.02), f'{int(h)}', ha='center', va='bottom', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, "Tipos de Itens Mais Demandados (OS)", grid_axis='y')
 
-            # LINHA 5 - Produção Individual
+            # Produção Individual
             ax = axs[4, 0]
             if not self.df_os_f.empty and 'criado_por' in self.df_os_f.columns:
                 counts = self.df_os_f['criado_por'].value_counts().head(8)
@@ -484,7 +483,7 @@ class DashboardView(ctk.CTkFrame):
                     if w > 0: ax.text(w + (max_val*0.02), bar.get_y() + bar.get_height()/2, f'{int(w)}', va='center', ha='left', fontweight='bold', color=COLOR_SECONDARY)
             self._configurar_eixo(ax, "Quantidade de Pareceres por Técnico", grid_axis='x')
 
-            # LINHA 6 - Produtividade
+            # Produtividade
             ax = axs[5, 0]
             s1 = self.df_os_f['criado_por'].value_counts() if not self.df_os_f.empty else pd.Series(dtype=int)
             s2 = self.df_par_f['criado_por'].value_counts() if not self.df_par_f.empty else pd.Series(dtype=int)
@@ -544,7 +543,7 @@ class DashboardView(ctk.CTkFrame):
             
             self._configurar_eixo(ax, "Produtividade Relativa vs Média da Equipe (%)", grid_axis='x')
 
-            # LINHA 7 - ORIGEM DA DEMANDA (ATUALIZADO COM NÚMERO E PORCENTAGEM)
+            # ORIGEM DA DEMANDA
             ax = axs[6, 0]
             if not self.df_os_f.empty and 'origem' in self.df_os_f.columns:
                 counts = self.df_os_f['origem'].value_counts()

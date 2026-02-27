@@ -9,7 +9,7 @@ try:
 except ImportError:
     def resource_path(path): return path
 
-# --- PALETA DE CORES DA ETUFOR / SEU SISTEMA ---
+# --- PALETA DE CORES DA ETUFOR ---
 COLOR_PRIMARY = "#0F8C75"       # Verde Principal
 COLOR_PRIMARY_HOVER = "#0B6B59" 
 COLOR_SECONDARY = "#F24822"     # Laranja/Vermelho
@@ -80,7 +80,6 @@ class LoginView(ctk.CTk):
 
     def _construir_rodape(self):
             """Rodapé fixo na parte inferior com elementos centralizados."""
-            # Removido o sticky="ew" para que o frame se ajuste ao tamanho do conteúdo e fique no centro
             footer_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
             footer_frame.grid(row=1, column=0, pady=20)
 
@@ -139,9 +138,7 @@ class LoginView(ctk.CTk):
         btn_eye.configure(command=toggle)
         return entry
 
-    # =========================================================================
     # TELA DE LOGIN
-    # =========================================================================
     def mostrar_login(self):
         self._resetar_frame_ativo()
 
@@ -180,15 +177,13 @@ class LoginView(ctk.CTk):
         else:
             messagebox.showerror("Acesso Negado", msg)
 
-    # =========================================================================
     # TELA DE CADASTRO
-    # =========================================================================
     def mostrar_cadastro(self):
         self._resetar_frame_ativo()
 
         ctk.CTkLabel(self.active_frame, text="NOVA CONTA", font=("Century Gothic bold", 32), text_color=COLOR_PRIMARY).pack(pady=(0, 20))
 
-        # Espaçamentos levemente reduzidos (pady=6) para garantir que cabe tudo em telas menores
+        # Campos de Cadastro
         self.cad_nome = ctk.CTkEntry(self.active_frame, placeholder_text="Nome Completo", width=380, height=45, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.cad_nome.pack(pady=6)
 
@@ -198,7 +193,7 @@ class LoginView(ctk.CTk):
         self.cad_email = ctk.CTkEntry(self.active_frame, placeholder_text="E-mail", width=380, height=45, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.cad_email.pack(pady=6)
 
-        # Campos de Senha (Agora os DOIS têm o olho mágico)
+        # Campos de Senha
         self.cad_senha = self._criar_campo_senha(self.active_frame, "Senha (mín. 6 caracteres)")
         self.cad_conf = self._criar_campo_senha(self.active_frame, "Confirmar Senha")
 
@@ -219,9 +214,7 @@ class LoginView(ctk.CTk):
         else:
             messagebox.showwarning("Atenção", msg)
 
-    # =========================================================================
     # TELA DE RECUPERAÇÃO DE SENHA
-    # =========================================================================
     def mostrar_recuperacao(self):
         self._resetar_frame_ativo()
 

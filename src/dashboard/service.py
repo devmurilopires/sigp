@@ -50,6 +50,7 @@ class DashboardService:
         return df_os_f, df_par_f
 
     def calcular_kpis(self, df_os_f, df_par_f):
+        # Quantidade de OS e Pareceres no período
         count_os = len(df_os_f)
         count_par = len(df_par_f)
         

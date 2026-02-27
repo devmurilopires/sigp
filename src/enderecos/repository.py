@@ -33,7 +33,7 @@ class EnderecoRepository:
 
     def listar_todos(self):
         # O AS (Alias) garante que o Pandas DataFrame continue entregando os nomes 
-        # antigos para a View, sem precisarmos refazer a tela de Endereços!
+        # antigos para a View, sem precisar refazer a tela de Endereços!
         query = """
             SELECT 
                 id_ponto, 

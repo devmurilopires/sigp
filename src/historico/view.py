@@ -19,9 +19,10 @@ class HistoricoView(ctk.CTkFrame):
         self.acao_buscar() 
 
     def _construir_interface(self):
+        # TÍTULO
         ctk.CTkLabel(self, text="Histórico de Exclusões (Auditoria)", font=("Arial Black", 22), text_color="#0F8C75").pack(side="top", pady=(10, 5), anchor="w", padx=20)
 
-        # 1. FILTROS (2 LINHAS)
+        # FILTROS
         filtros_container = ctk.CTkFrame(self, fg_color="#F2F2F2", corner_radius=8)
         filtros_container.pack(side="top", fill="x", padx=20, pady=0)
 
@@ -44,7 +45,7 @@ class HistoricoView(ctk.CTkFrame):
         self.data_fim.pack(side="left", padx=(2, 15))
         ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 13), width=90, height=32, command=self.acao_buscar).pack(side="left")
 
-        # 2. INFO BAR & PAGINAÇÃO
+        # INFO BAR & PAGINAÇÃO
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
         info_frame.pack(fill="x", padx=20, pady=(15, 5))
         self.lbl_contador = ctk.CTkLabel(info_frame, text="0 resultados", font=("Arial Bold", 14), text_color="#333333")
@@ -59,7 +60,7 @@ class HistoricoView(ctk.CTkFrame):
         self.btn_prox = ctk.CTkButton(pag_frame, text=">", width=35, height=30, fg_color="#14A1D9", font=("Arial Black", 14), command=self._proxima_pagina)
         self.btn_prox.pack(side="left", padx=5)
 
-        # 3. TABELA VISUAL
+        # TABELA VISUAL
         self.tabela_container = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=10)
         self.tabela_container.pack(fill="both", expand=True, padx=20, pady=(0, 15))
         self.header_frame = ctk.CTkFrame(self.tabela_container, fg_color="#0F8C75", corner_radius=6)
@@ -76,6 +77,7 @@ class HistoricoView(ctk.CTkFrame):
             lbl.pack(side="left", padx=5, pady=6)
 
     def _add_filtro_grid(self, parent, label, key, row, col, width=120):
+        # Cria um frame para o filtro, com label e entry, e armazena a referência do widget no dicionário de filtros
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, padx=5, pady=2, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 11), text_color="#555").pack(anchor="w")
@@ -85,6 +87,7 @@ class HistoricoView(ctk.CTkFrame):
         self.filtros_widgets[key] = entry
 
     def _add_combo_grid(self, parent, label, key, values, row, col, width=120):
+        # Cria um frame para o filtro, com label e combo, e armazena a referência do widget no dicionário de filtros
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, padx=5, pady=2, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 11), text_color="#555").pack(anchor="w")
@@ -139,8 +142,8 @@ class HistoricoView(ctk.CTkFrame):
             frame_botoes.pack(side="right", padx=5)
 
             # Botão Único (Mostrar os dados originais Read-Only)
-            ctk.CTkButton(frame_botoes, text="🔍 Dossiê", fg_color="#14A1D9", hover_color="#0F7FA8", width=90, height=28, 
-                          command=lambda d=d_json, m=modulo, n=numero: self._mostrar_dossie(m, n, d)).pack(side="left", padx=2)
+            ctk.CTkButton(frame_botoes, text="🔍 Detalhes", fg_color="#14A1D9", hover_color="#0F7FA8", width=90, height=28, 
+                          command=lambda d=d_json, m=modulo, n=numero: self._mostrar_detalhes(m, n, d)).pack(side="left", padx=2)
 
     def _proxima_pagina(self):
         self.pagina_atual += 1; self._renderizar_pagina()
@@ -148,14 +151,14 @@ class HistoricoView(ctk.CTkFrame):
     def _pagina_anterior(self):
         self.pagina_atual -= 1; self._renderizar_pagina()
 
-    def _mostrar_dossie(self, modulo, numero, dados_json):
+    def _mostrar_detalhes(self, modulo, numero, dados_json):
         """Transforma o JSON salvo no banco em um relatório legível e bonito na tela"""
         popup = ctk.CTkToplevel(self)
-        popup.title(f"Dossiê Arquivado: {modulo} Nº {numero}")
+        popup.title(f"Detalhes Arquivado: {modulo} Nº {numero}")
         popup.geometry("600x650")
         popup.grab_set()
 
-        ctk.CTkLabel(popup, text=f"Dossiê - {modulo} Nº {numero}", font=("Arial Black", 20), text_color="#0F8C75").pack(pady=15)
+        ctk.CTkLabel(popup, text=f"Detalhes - {modulo} Nº {numero}", font=("Arial Black", 20), text_color="#0F8C75").pack(pady=15)
         
         scroll = ctk.CTkScrollableFrame(popup, fg_color="#F9F9F9", corner_radius=10)
         scroll.pack(fill="both", expand=True, padx=20, pady=10)
@@ -177,7 +180,7 @@ class HistoricoView(ctk.CTkFrame):
         else:
             ctk.CTkLabel(scroll, text="Dados arquivados em formato bruto incorreto.").pack()
 
-        ctk.CTkButton(popup, text="Fechar Dossiê", fg_color="gray", font=("Arial Bold", 15), height=45, command=popup.destroy).pack(fill="x", padx=40, pady=20)
+        ctk.CTkButton(popup, text="Fechar Detalhes", fg_color="gray", font=("Arial Bold", 15), height=45, command=popup.destroy).pack(fill="x", padx=40, pady=20)
 
 def renderizar(frame_destino, usuario_logado):
     return HistoricoView(master=frame_destino, usuario_logado=usuario_logado)

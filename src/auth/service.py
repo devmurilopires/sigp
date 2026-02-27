@@ -14,9 +14,7 @@ class AuthService:
         self.codigo_recuperacao = None
         self.email_recuperacao = None
 
-    # =========================================================================
     # INFRAESTRUTURA DE BASE DE DADOS
-    # =========================================================================
     def _executar_query(self, query, params=None, fetch_one=False, commit=False):
         """
         Método centralizado para executar as consultas (queries) na base de dados.
@@ -48,9 +46,7 @@ class AuthService:
             print(f"[LOG APP] {msg_erro}")
             return None, "Ocorreu um erro interno no sistema."
 
-    # =========================================================================
     # AUTENTICAÇÃO E CADASTRO
-    # =========================================================================
     def login(self, username, senha):
         """
         Autentica o utilizador através do username ou email.
@@ -142,9 +138,7 @@ class AuthService:
             print(f"[LOG HASH] Erro ao encriptar a senha: {e}")
             return False, "Erro interno ao processar o registo."
 
-    # =========================================================================
     # RECUPERAÇÃO DE SENHA
-    # =========================================================================
     def enviar_codigo_recuperacao(self, email):
         """
         Valida o e-mail, gera um código de 6 dígitos e envia por SMTP.
@@ -227,9 +221,7 @@ class AuthService:
             print(f"[LOG HASH] Falha a encriptar a nova senha: {e}")
             return False, "Ocorreu um erro interno ao guardar a nova senha."
 
-    # =========================================================================
     # GESTÃO DE SESSÃO LOCAL (MANTER CONECTADO)
-    # =========================================================================
     def salvar_sessao(self, dados_usuario):
         """
         Guarda o dicionário do utilizador num ficheiro JSON.

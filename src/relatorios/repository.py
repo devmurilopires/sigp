@@ -60,6 +60,7 @@ class RelatorioRepository:
             return []
 
     def buscar_pareceres(self, filtros):
+        # BUSCA DE PARECERES COM FILTROS DINÂMICOS
         query = """
             SELECT p.id, b.numero_parecer_ano, p.tipo_parecer, p.processo, p.assunto, 
                    p.ids_pontos, p.solicitante, p.endereco_vistoria, p.origem_demanda, 
@@ -102,6 +103,7 @@ class RelatorioRepository:
             query += " AND DATE(b.created_at) BETWEEN %s AND %s"
             params.extend([filtros['data_inicio'], filtros['data_fim']])
 
+        # Ordenação por Data de Criação (Mais Recente Primeiro)
         query += " ORDER BY b.created_at DESC"
         try:
             with get_db_connection() as conn:
@@ -135,6 +137,7 @@ class RelatorioRepository:
         return None
 
     def buscar_detalhes_parecer(self, id_banco):
+        # BUSCA DE TODOS OS DETALHES DO PARECER PARA A TELA DE EDIÇÃO
         query = """
             SELECT b.numero_parecer_ano, TO_CHAR(b.created_at, 'DD/MM/YYYY'), p.origem_demanda, p.tipo_parecer, 
                    p.processo, p.assunto, p.solicitante, p.ids_pontos, p.tipo_execucao, 
@@ -158,6 +161,7 @@ class RelatorioRepository:
         return None
 
     def atualizar_os(self, id_banco, dados):
+        # ATUALIZAÇÃO DE ORDEM DE SERVIÇO (COM LÓGICA DE DATA DE CONCLUSÃO)
         query = """
             UPDATE sigp.ordens_servico 
             SET origem_demanda=%s, ponto_principal_id=%s, pontos_adicionais=%s, acao_realizada=%s, 
@@ -185,6 +189,7 @@ class RelatorioRepository:
         except Exception as e: return False, f"Erro ao atualizar: {e}"
 
     def atualizar_parecer(self, id_banco, dados):
+        # ATUALIZAÇÃO DE PARECER (COM LÓGICA PARA MOTIVO DE INDEFERIMENTO)
         query1 = """
             UPDATE sigp.pareceres 
             SET origem_demanda=%s, tipo_parecer=%s, processo=%s, assunto=%s, solicitante=%s, 
@@ -200,6 +205,7 @@ class RelatorioRepository:
             )
             WHERE id = %s
         """
+        # Padronização dos campos (Maiúsculas e Tratamento de Nulos)
         origem_up = str(dados.get("Origem", "SPU")).strip().upper()
         try:
             with get_db_connection() as conn:
@@ -218,6 +224,7 @@ class RelatorioRepository:
         except Exception as e: return False, f"Erro ao atualizar: {e}"
 
     def obter_dados_para_caminho_os(self, id_banco):
+        # BUSCA DE DADOS ESSENCIAIS PARA MONTAR O CAMINHO DO ARQUIVO WORD DA OS
         query = "SELECT numero, data_criacao, ponto_principal_id, pontos_adicionais, modelo_documento FROM sigp.ordens_servico WHERE id = %s"
         try:
             with get_db_connection() as conn:
@@ -227,6 +234,7 @@ class RelatorioRepository:
         except: return None
 
     def obter_caminho_parecer(self, id_banco):
+        # BUSCA DO CAMINHO DO ARQUIVO WORD DO PARECER PARA DOWNLOAD
         query = "SELECT caminho_arquivo_docx FROM sigp.pareceres WHERE id = %s"
         try:
             with get_db_connection() as conn:
@@ -237,6 +245,7 @@ class RelatorioRepository:
         except: return None
 
     def excluir_e_logar_os(self, id_banco, dados_json, caminho_original, motivo, excluido_por):
+        # EXCLUSÃO DE ORDEM DE SERVIÇO COM LOG NO HISTÓRICO
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -248,6 +257,7 @@ class RelatorioRepository:
         except Exception as e: return False, f"Erro no banco ao excluir: {e}"
 
     def excluir_e_logar_parecer(self, id_banco, dados_json, caminho_original, motivo, excluido_por):
+        # EXCLUSÃO DE PARECER COM LOG NO HISTÓRICO
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:

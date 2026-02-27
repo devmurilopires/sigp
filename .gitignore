@@ -2,7 +2,7 @@
 # Nunca suba o .env, pois ele contém a senha do seu banco de dados
 .env
 login_salvo.json
-
+settings.py
 # --- ARQUIVOS TEMPORÁRIOS DO PYTHON ---
 __pycache__/
 *.py[cod]

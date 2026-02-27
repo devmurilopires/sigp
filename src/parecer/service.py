@@ -34,7 +34,7 @@ class ParecerService:
         ano = data_atual.year
         data_str = data_atual.strftime("%d/%m/%Y")
 
-        # 1. Ajusta o Plural do Item
+        # Ajusta o Plural do Item
         quantidade_normalizada = quantidade.lower().strip()
         plurais = {
             "Abrigo Metálico": "Abrigos Metálicos",
@@ -46,13 +46,13 @@ class ParecerService:
         if not (quantidade_normalizada.startswith("um") or quantidade_normalizada.startswith("uma")):
             item = plurais.get(item, item)
 
-        # 2. Pega o número do parecer
+        # Pega o número do parecer
         try:
             numero = self.repo.obter_proximo_numero(ano)
         except Exception as e:
             return False, str(e)
 
-        # 3. Prepara Caminhos do Arquivo Word
+        # Prepara Caminhos do Arquivo Word
         modelo = resource_path(os.path.join("dados", "modelo_deferido.docx")) if tipo_parecer == "Deferido" else resource_path(os.path.join("dados", "modelo_indeferido.docx"))
         
         if not os.path.exists(modelo):
@@ -76,19 +76,15 @@ class ParecerService:
             quantidade, caminho_arquivo, usuario_logado, origem 
         )
 
-        # =========================================================================
-        # 4. GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
-        # =========================================================================
+        # GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
         try:
             self.repo.salvar_parecer(dados_banco)
         except Exception as e:
             return False, f"Erro Crítico! O Parecer NÃO foi gerado pois houve falha no Banco de Dados:\n{str(e)}"
 
-        # =========================================================================
-        # 5. SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
-        # =========================================================================
+        # SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
         try:
-            # ---> O MÁGICO os.makedirs AQUI VAI CRIAR A PASTA DO ANO CASO NÃO EXISTA
+            # AQUI VAI CRIAR A PASTA DO ANO CASO NÃO EXISTA
             os.makedirs(pasta_saida, exist_ok=True)
             self._gerar_documento_word(modelo, caminho_arquivo, {
                 "{{NUM_PARECER}}": f"{numero:03d}",
@@ -109,12 +105,10 @@ class ParecerService:
         except Exception as e:
             return False, f"Atenção: O Parecer foi registrado no banco, mas houve falha ao gerar o documento Word:\n{e}"
 
-    # =========================================================
     # MANIPULAÇÃO DO WORD (DOCX)
-    # =========================================================
     def _gerar_documento_word(self, modelo_path, destino_path, tags):
         doc = Document(modelo_path)
-        
+        # Substitui as tags no documento (tanto em parágrafos quanto em tabelas)
         for p in doc.paragraphs:
             texto_completo = "".join(run.text for run in p.runs)
             modificado = False
@@ -126,7 +120,7 @@ class ParecerService:
             if modificado:
                 for run in p.runs: run.text = ""
                 if p.runs: p.runs[0].text = texto_completo
-
+        # Substituição nas tabelas
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
