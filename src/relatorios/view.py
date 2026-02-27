@@ -26,6 +26,7 @@ class RelatorioView(ctk.CTkFrame):
         self._construir_interface()
         self.acao_buscar() 
 
+    # CONSTRUÇÃO DA INTERFACE
     def _construir_interface(self):
         titulo = "Relatórios de Ordens de Serviço" if self.tipo_relatorio == "OS" else "Relatórios de Pareceres Técnicos"
         ctk.CTkLabel(self, text=titulo, font=("Arial Black", 22), text_color="#0F8C75").pack(side="top", pady=(10, 5), anchor="w", padx=20)
@@ -41,8 +42,8 @@ class RelatorioView(ctk.CTkFrame):
             self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=200)
             self._add_combo_grid(grid_frame, "Tipo OS", "tipo_os", ["Todos", "Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], 0, 2, width=130)
             self._add_combo_grid(grid_frame, "Pasta", "pasta", ["Todos", "URBMIDIA", "PROXIMA PARADA"], 0, 3, width=130)
-            self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=300)
-            self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 0, 5, width=150)
+            self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=320)
+            self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 0, 5, width=180)
 
             self._add_filtro_grid(grid_frame, "Bairro", "bairro", 1, 0, width=140)
             self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) 
@@ -74,13 +75,17 @@ class RelatorioView(ctk.CTkFrame):
         ctk.CTkLabel(datas_frame, text="à", text_color="#555", font=("Arial Bold", 11)).pack(side="left", padx=2)
         self.data_fim = DateEntry(datas_frame, date_pattern="dd/mm/yyyy", width=10, font=("Arial", 11))
         self.data_fim.pack(side="left", padx=(2, 15))
-        ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 14), width=100, height=35, command=self.acao_buscar).pack(side="left")
+
+        # Botões de Buscar e Limpar 
+        ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 14), width=90, height=35, command=self.acao_buscar).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(datas_frame, text="🧹 Limpar", fg_color="#F24822", hover_color="#FF4319", font=("Arial Bold", 14), width=90, height=35, command=self.acao_limpar).pack(side="left")
 
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
         info_frame.pack(fill="x", padx=20, pady=(15, 5))
         self.lbl_contador = ctk.CTkLabel(info_frame, text="0 resultados", font=("Arial Bold", 14), text_color="#333333")
         self.lbl_contador.pack(side="left")
-
+        
+        #Paginação
         pag_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
         pag_frame.pack(side="right")
         self.btn_ant = ctk.CTkButton(pag_frame, text="<", width=35, height=30, fg_color="#0F8C75",hover_color="#0B6B59", font=("Arial Black", 14), command=self._pagina_anterior)
@@ -97,17 +102,14 @@ class RelatorioView(ctk.CTkFrame):
         self.scroll_tabela = ctk.CTkScrollableFrame(self.tabela_container, fg_color="transparent")
         self.scroll_tabela.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # ---> CABEÇALHOS CENTRALIZADOS <---
         if self.tipo_relatorio == "OS":
             self.headers = ["Nº", "Data", "ID(s)", "Origem", "Ação", "Item", "Endereço", "Status", "Pasta", "Criador", "Ações"]
-            # Aumentei o espaço da última coluna de Ações para 190 para caber todos os botões com folga
             self.col_widths = [40, 75, 80, 60, 100, 110, 160, 120, 110, 90, 190] 
         else:
             self.headers = ["Nº", "Tipo", "Origem", "Processo", "Assunto", "ID(s)", "Solicitante", "Endereço", "Data", "Criador", "Ações"]
             self.col_widths = [40, 80, 60, 90, 140, 80, 120, 160, 75, 90, 190]
 
         for j, h in enumerate(self.headers):
-            # O texto de Ações agora fica no centro, o resto fica na esquerda
             ancora = "center" if h == "Ações" else "w"
             lbl = ctk.CTkLabel(self.header_frame, text=h, width=self.col_widths[j], font=("Arial Bold", 12), text_color="white", anchor=ancora)
             lbl.pack(side="left", padx=5, pady=6)
@@ -131,6 +133,17 @@ class RelatorioView(ctk.CTkFrame):
         combo.pack(anchor="w")
         combo.bind("<Return>", lambda e: self.acao_buscar())
         self.filtros_widgets[key] = combo
+
+    def acao_limpar(self):
+        """Limpa todos os campos, desmarca a data e busca tudo de novo."""
+        for key, widget in self.filtros_widgets.items():
+            if hasattr(widget, "set") and isinstance(widget, ctk.CTkComboBox):
+                widget.set(widget.cget("values")[0]) # Volta para "Todos"
+            elif hasattr(widget, "delete"):
+                widget.delete(0, "end") # Apaga o texto
+                
+        self.usar_data_var.set(False) # Desmarca a caixinha de data
+        self.acao_buscar() # Faz a busca com tudo limpo
 
     def acao_buscar(self):
         filtros = {key: widget.get().strip() for key, widget in self.filtros_widgets.items() if widget.get().strip()}
@@ -182,18 +195,13 @@ class RelatorioView(ctk.CTkFrame):
                 lbl = ctk.CTkLabel(linha_frame, text=texto_curto, width=self.col_widths[j], text_color=cor_txt, font=("Arial", 12), anchor="w")
                 lbl.pack(side="left", padx=5, pady=6)
 
-            # ---> LÓGICA DE CENTRALIZAÇÃO DOS BOTÕES <---
-            
-            # Cria a "caixa" invisível com o tamanho exato da coluna (190px)
             frame_coluna_acoes = ctk.CTkFrame(linha_frame, width=self.col_widths[-1], height=40, fg_color="transparent")
-            frame_coluna_acoes.pack_propagate(False) # Força a caixa a manter o tamanho
+            frame_coluna_acoes.pack_propagate(False) 
             frame_coluna_acoes.pack(side="left", padx=5, pady=2)
 
-            # Container interno que junta os botões bem no meio (anchor="center")
             frame_botoes = ctk.CTkFrame(frame_coluna_acoes, fg_color="transparent")
             frame_botoes.place(relx=0.5, rely=0.5, anchor="center")
 
-            # Os Botões
             ctk.CTkButton(frame_botoes, text="🔍", font=("Arial", 16), fg_color="#F24822", hover_color="#FF522B", width=45, height=32, command=lambda id_reg=id_banco_invisivel: self._acao_detalhes(id_reg)).pack(side="left", padx=3)
 
             if caminho_arquivo and caminho_arquivo != "-":
@@ -216,9 +224,7 @@ class RelatorioView(ctk.CTkFrame):
         sucesso, msg = self.service.abrir_arquivo(caminho)
         if not sucesso: messagebox.showerror("Erro de Leitura", msg)
 
-    # =======================================================
-    # POPUP INTELIGENTE
-    # =======================================================
+    # POPUP DE DETALHES (E EDIÇÃO PARA ADMIN)
     def _acao_detalhes(self, id_registro):
         dados = self.service.buscar_detalhes_para_edicao(self.tipo_relatorio, id_registro)
         if not dados:
@@ -249,7 +255,7 @@ class RelatorioView(ctk.CTkFrame):
             
             valor_texto = str(valor) if valor and str(valor) != "None" else ""
 
-            if not self.is_admin or "Nº" in chave or "Data Criação" in chave or "Criado por" in chave: 
+            if not self.is_admin or "Nº" in chave or "Data Criação" in chave: 
                 lbl_texto = valor_texto if valor_texto else "-"
                 lbl = ctk.CTkLabel(linha, text=lbl_texto, font=("Arial", 12), anchor="w", justify="left", wraplength=450)
                 lbl.pack(side="left", fill="x", expand=True)
@@ -274,7 +280,7 @@ class RelatorioView(ctk.CTkFrame):
                 self.entradas_edicao[chave] = cb
             
             elif "Descrição" in chave or "Motivo" in chave:
-                tb = ctk.CTkTextbox(linha, height=80, font=("Arial", 12))
+                tb = ctk.CTkTextbox(linha, height=80, font=("Arial", 12), border_width=2)
                 tb.insert("1.0", valor_texto)
                 tb.pack(side="left", fill="x", expand=True)
                 self.entradas_edicao[chave] = tb
