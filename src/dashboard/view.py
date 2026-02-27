@@ -518,7 +518,7 @@ class DashboardView(ctk.CTkFrame):
                 media_pct = (media_docs / total_geral_sistema) * 100
 
                 texto_legenda = f"Média Ideal da Equipe:\n{media_docs} Docs/Téc\n({media_pct:.1f}%)"
-                ax.text(0.98, 0.03, texto_legenda, transform=ax.transAxes, ha='right', va='bottom',
+                ax.text(1.2, 0.03, texto_legenda, transform=ax.transAxes, ha='right', va='bottom',
                         fontsize=9, fontweight='bold', color='#333333',
                         bbox=dict(facecolor='#F4F6F9', alpha=0.9, edgecolor=COLOR_PRIMARY, boxstyle='round,pad=0.4'))
 
