@@ -2,6 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import math
+import re
 import unicodedata
 from tkcalendar import DateEntry
 from src.modulos.quadro_horario.pesquisas.service import PesquisaQuadroHorarioService
@@ -388,7 +389,7 @@ class PesquisasView(ctk.CTkFrame):
         for item in self.t_amarela.get_children():
             h_int = int(self.t_amarela.set(item, "horario").split(":")[0])
             for i in range(1, self.num_sentidos + 1):
-                vals = [float(t.set(it, f"s{i}") or 0) for t in self.t_cinzas for it in t.get_children() if int(t.set(it, "horario").split(":")[0]) == h_int and float(t.set(it, f"s{i}") or 0) > 0]
+                vals = [self._numero_da_celula(t.set(it, f"s{i}")) for t in self.t_cinzas for it in t.get_children() if int(t.set(it, "horario").split(":")[0]) == h_int and self._numero_da_celula(t.set(it, f"s{i}")) > 0]
                 media = math.ceil(sum(vals)/len(vals)) if vals else 0
                 self.t_amarela.set(item, f"s{i}", str(media))
         self._somar_linha(self.t_amarela)
@@ -397,7 +398,7 @@ class PesquisasView(ctk.CTkFrame):
             item_a = next(i for i in self.t_amarela.get_children() if int(self.t_amarela.set(i, "horario").split(":")[0]) == h_int)
             item_v = next(i for i in self.t_verde.get_children() if int(self.t_verde.set(i, "horario").split(":")[0]) == h_int)
             for i in range(1, self.num_sentidos + 1):
-                diff = int(float(self.t_verde.set(item_v, f"s{i}") or 0)) - int(float(self.t_amarela.set(item_a, f"s{i}") or 0))
+                diff = int(self._numero_da_celula(self.t_verde.set(item_v, f"s{i}"))) - int(self._numero_da_celula(self.t_amarela.set(item_a, f"s{i}")))
                 self.t_azul.set(item, f"s{i}", str(diff))
         self._somar_linha(self.t_azul)
 
@@ -429,7 +430,7 @@ class PesquisasView(ctk.CTkFrame):
         for item in self.d_amarela.get_children():
             h_int = int(self.d_amarela.set(item, "horario").split(":")[0])
             for i in range(1, self.num_sentidos + 1):
-                vals = [float(t.set(it, f"s{i}") or 0) for t in self.d_cinzas for it in t.get_children() if int(t.set(it, "horario").split(":")[0]) == h_int and float(t.set(it, f"s{i}") or 0) > 0]
+                vals = [self._numero_da_celula(t.set(it, f"s{i}")) for t in self.d_cinzas for it in t.get_children() if int(t.set(it, "horario").split(":")[0]) == h_int and self._numero_da_celula(t.set(it, f"s{i}")) > 0]
                 self.d_amarela.set(item, f"s{i}", str(math.ceil(sum(vals)/len(vals)) if vals else 0))
         self._somar_linha(self.d_amarela)
         self._somar_linha(self.d_viagens)
@@ -438,21 +439,37 @@ class PesquisasView(ctk.CTkFrame):
             item_a = next(i for i in self.d_amarela.get_children() if int(self.d_amarela.set(i, "horario").split(":")[0]) == h_int)
             item_v = next(i for i in self.d_viagens.get_children() if int(self.d_viagens.set(i, "horario").split(":")[0]) == h_int)
             for i in range(1, self.num_sentidos + 1):
-                v_viag = int(float(self.d_viagens.set(item_v, f"s{i}") or 0))
-                v_amar = int(float(self.d_amarela.set(item_a, f"s{i}") or 0))
+                v_viag = int(self._numero_da_celula(self.d_viagens.set(item_v, f"s{i}")))
+                v_amar = int(self._numero_da_celula(self.d_amarela.set(item_a, f"s{i}")))
                 self.d_pass.set(item, f"s{i}", str(math.ceil(v_amar/v_viag) if v_viag > 0 else 0))
         self._somar_linha(self.d_pass)
 
     def _somar_linha(self, tree):
         cols = [f"s{i}" for i in range(1, self.num_sentidos + 1)]
         for item in tree.get_children():
-            tree.set(item, "total", str(math.ceil(sum(float(tree.set(item, c) or 0) for c in cols))))
+            tree.set(item, "total", str(math.ceil(sum(self._numero_da_celula(tree.set(item, c)) for c in cols))))
+
+    @staticmethod
+    def _numero_da_celula(valor):
+        """Evita que uma edição manual inválida interrompa todos os cálculos."""
+        texto = str(valor).strip()
+        if not texto:
+            return 0.0
+        try:
+            return float(texto.replace(",", "."))
+        except ValueError:
+            return 0.0
 
     def _obter_nomes_sentidos(self, tree):
-        return {unicodedata.normalize("NFD", tree.heading(f"s{i}", "text").lower().strip()).encode("ascii", "ignore").decode("utf-8").replace(" ", ""): f"s{i}" for i in range(1, self.num_sentidos + 1)}
+        nomes = {}
+        for i in range(1, self.num_sentidos + 1):
+            titulo = tree.heading(f"s{i}", "text").lower().strip()
+            titulo = unicodedata.normalize("NFD", titulo).encode("ascii", "ignore").decode("utf-8")
+            nomes[re.sub(r"[^a-z0-9]", "", titulo)] = f"s{i}"
+        return nomes
 
     def _carregar_excel(self, tree, tipo_processamento):
-        caminho = filedialog.askopenfilename(filetypes=[("Excel", "*.xlsx *.xls")])
+        caminho = filedialog.askopenfilename(filetypes=[("Excel", "*.xlsx *.xls *.xlsm")])
         if not caminho: return
         ns = self._obter_nomes_sentidos(tree)
         sucesso, dados = False, {}
@@ -461,6 +478,11 @@ class PesquisasView(ctk.CTkFrame):
         elif tipo_processamento == 'demanda': sucesso, dados = self.service.processar_excel_demanda(caminho, ns)
         elif tipo_processamento == 'viagens': sucesso, dados = self.service.processar_excel_viagens(caminho, ns)
         if not sucesso: return messagebox.showerror("Erro", dados)
+        # Uma nova importação substitui por completo o conteúdo da tabela alvo;
+        # assim, horários removidos da planilha não ficam preservados por engano.
+        for item in tree.get_children():
+            for indice in range(1, self.num_sentidos + 1):
+                tree.set(item, f"s{indice}", "0")
         for item in tree.get_children():
             h_int = int(tree.set(item, "horario").split(":")[0])
             for col, vals in dados.items():

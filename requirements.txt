@@ -1,0 +1,2 @@
+# Leitura de arquivos Excel antigos (.xls) no módulo Quadro de Horário.
+xlrd>=2.0.1,<3
