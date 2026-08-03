@@ -393,6 +393,7 @@ class PesquisasView(ctk.CTkFrame):
                 media = math.ceil(sum(vals)/len(vals)) if vals else 0
                 self.t_amarela.set(item, f"s{i}", str(media))
         self._somar_linha(self.t_amarela)
+        self._somar_linha(self.t_verde)
         for item in self.t_azul.get_children():
             h_int = int(self.t_azul.set(item, "horario").split(":")[0])
             item_a = next(i for i in self.t_amarela.get_children() if int(self.t_amarela.set(i, "horario").split(":")[0]) == h_int)
@@ -481,7 +482,7 @@ class PesquisasView(ctk.CTkFrame):
         # Uma nova importação substitui por completo o conteúdo da tabela alvo;
         # assim, horários removidos da planilha não ficam preservados por engano.
         for item in tree.get_children():
-            for indice in range(1, self.num_sentidos + 1):
+            for indice in range(1, 5):
                 tree.set(item, f"s{indice}", "0")
         for item in tree.get_children():
             h_int = int(tree.set(item, "horario").split(":")[0])
