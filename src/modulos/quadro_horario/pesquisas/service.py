@@ -150,14 +150,26 @@ class PesquisaQuadroHorarioService:
         if not df.iloc[start:].empty: blocks.append(df.iloc[start:].copy())
         return blocks
 
-    def _encontrar_coluna(self, colunas, chaves):
-        col_map = {self._normalizar_nome(str(c)): c for c in colunas}
+    def _encontrar_coluna(self, colunas, chaves, ignorar=()):
+        # 'ignorar' impede que a mesma coluna da planilha seja usada para dois
+        # papéis diferentes (o pandas quebraria ao selecionar a coluna repetida).
+        col_map = {self._normalizar_nome(str(c)): c for c in colunas if c not in ignorar}
         for chave in chaves:
             if chave in col_map: return col_map[chave]
         for chave in chaves:
             for norm_col, orig_col in col_map.items():
                 if chave in norm_col:
                     return orig_col
+        return None
+
+    def _coluna_do_sentido(self, nomes_sentidos, nome_norm, indice, usadas):
+        """Define em qual coluna da grade o bloco cai, sem sobrescrever outro bloco."""
+        candidatos = [nomes_sentidos.get(nome_norm), f"s{indice}"]
+        candidatos += [f"s{i}" for i in range(1, 5)]
+        for coluna in candidatos:
+            if coluna and coluna not in usadas:
+                usadas.add(coluna)
+                return coluna
         return None
 
     # --- PROCESSAMENTO: TEMPO DE VIAGEM ---
@@ -168,26 +180,27 @@ class PesquisaQuadroHorarioService:
         df = df_ou_erro
         
         t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
-        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora", "real", "inicio"])
-        tv_col = self._encontrar_coluna(df.columns, ["tempoviagem", "tempo", "tv", "duracao", "viagem"])
-        
-        if not (t_col and p_col and tv_col): 
+        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora", "real", "inicio"], ignorar=(t_col,))
+        tv_col = self._encontrar_coluna(df.columns, ["tempoviagem", "tempo", "tv", "duracao", "viagem"], ignorar=(t_col, p_col))
+
+        if not (t_col and p_col and tv_col):
             return False, f"Este quadro (Tempo de Viagem) precisa de: Trajeto, Partida Real e Tempo.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
-        
+
         blocos = self._separar_blocos(df[[t_col, p_col, tv_col]].copy(), t_col)
         if not blocos: return False, "Nenhum dado válido encontrado. Certifique-se de separar os sentidos com uma linha em branco."
 
-        sentidos = {}
+        sentidos, usadas = {}, set()
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
             bloco["TempoMin"] = bloco[tv_col].apply(self._tempo_para_minutos)
-            
+
             bloco = bloco[bloco["Hora"].notna() & bloco["TempoMin"].notna()]
             if bloco.empty: continue
 
             medias = bloco.groupby("Hora")["TempoMin"].mean()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
-            col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
+            col_alvo = self._coluna_do_sentido(nomes_sentidos, nome_norm, i, usadas)
+            if not col_alvo: break
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
         return (True, sentidos) if sentidos else (False, "Nenhum horário e tempo de viagem válido foi encontrado na planilha.")
 
@@ -198,14 +211,14 @@ class PesquisaQuadroHorarioService:
         df = df_ou_erro
         
         t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
-        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida", "hora"])
-        tv_col = self._encontrar_coluna(df.columns, ["tv", "tempoviagem", "tempo", "duracao", "viagem"])
-        
-        if not (t_col and p_col and tv_col): 
+        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida", "hora"], ignorar=(t_col,))
+        tv_col = self._encontrar_coluna(df.columns, ["tv", "tempoviagem", "tempo", "duracao", "viagem"], ignorar=(t_col, p_col))
+
+        if not (t_col and p_col and tv_col):
             return False, f"Este quadro (Quadro Atual) precisa de: Trajeto, Partida Planejada e TV.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
-        
+
         blocos = self._separar_blocos(df[[t_col, p_col, tv_col]].copy(), t_col)
-        sentidos = {}
+        sentidos, usadas = {}, set()
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
             bloco["TempoMin"] = bloco[tv_col].apply(lambda valor: self._tempo_para_minutos(valor, numero_em_minutos=True))
@@ -214,7 +227,8 @@ class PesquisaQuadroHorarioService:
 
             medias = bloco.groupby("Hora")["TempoMin"].mean()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
-            col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
+            col_alvo = self._coluna_do_sentido(nomes_sentidos, nome_norm, i, usadas)
+            if not col_alvo: break
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
         return (True, sentidos) if sentidos else (False, "Nenhum horário e TV válido foi encontrado na planilha.")
 
@@ -226,14 +240,14 @@ class PesquisaQuadroHorarioService:
         df = df_ou_erro
         
         t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
-        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora", "real"])
-        pass_col = self._encontrar_coluna(df.columns, ["passageiro", "passag", "pax", "total", "demanda", "qtd"])
-        
-        if not (t_col and p_col and pass_col): 
+        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora", "real"], ignorar=(t_col,))
+        pass_col = self._encontrar_coluna(df.columns, ["passageiro", "passag", "pax", "total", "demanda", "qtd"], ignorar=(t_col, p_col))
+
+        if not (t_col and p_col and pass_col):
             return False, f"Este quadro (Relatório Demanda) precisa de: Trajeto, Partida Real e Passageiro.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
-        
+
         blocos = self._separar_blocos(df[[t_col, p_col, pass_col]].copy(), t_col)
-        sentidos = {}
+        sentidos, usadas = {}, set()
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
             bloco[pass_col] = bloco[pass_col].apply(self._numero_excel)
@@ -242,7 +256,8 @@ class PesquisaQuadroHorarioService:
 
             somas = bloco.groupby("Hora")[pass_col].sum()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
-            col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
+            col_alvo = self._coluna_do_sentido(nomes_sentidos, nome_norm, i, usadas)
+            if not col_alvo: break
             sentidos[col_alvo] = {int(h): int(round(float(s))) for h, s in somas.items()}
         return (True, sentidos) if sentidos else (False, "Nenhum horário e quantidade de passageiros válida foi encontrada na planilha.")
 
@@ -253,13 +268,13 @@ class PesquisaQuadroHorarioService:
         df = df_ou_erro
         
         t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
-        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida", "hora"])
-        
-        if not (t_col and p_col): 
+        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida", "hora"], ignorar=(t_col,))
+
+        if not (t_col and p_col):
             return False, f"Este quadro (Nº de Viagens) precisa de: Trajeto e Partida Planejada.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
 
         blocos = self._separar_blocos(df[[t_col, p_col]].copy(), t_col)
-        viagens = {}
+        viagens, usadas = {}, set()
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
             bloco = bloco[bloco["Hora"].notna()]
@@ -267,6 +282,7 @@ class PesquisaQuadroHorarioService:
 
             contagens = bloco.groupby("Hora").size()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
-            col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
+            col_alvo = self._coluna_do_sentido(nomes_sentidos, nome_norm, i, usadas)
+            if not col_alvo: break
             viagens[col_alvo] = {int(h): int(c) for h, c in contagens.items()}
         return (True, viagens) if viagens else (False, "Nenhuma partida planejada válida foi encontrada na planilha.")
